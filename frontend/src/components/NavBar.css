@@ -1,0 +1,38 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 48px;
+  color: #ffffffcc;
+  background: linear-gradient(180deg, #231f2f 0%, #2b2540 100%);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.45);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.nav-brand {
+  font-size: 18px;
+  color: #e9eef6;
+  font-weight: 600;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-profile {
+  color: #cfcfe3;
+  font-size: 16px;
+}
+
+.nav-login {
+  background: #1fb6a0;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 15px;
+}
