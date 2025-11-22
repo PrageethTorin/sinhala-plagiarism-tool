@@ -1,0 +1,103 @@
+.home-container {
+  min-height: 100vh;
+  background: #26223a; /* deep navy/purple */
+  color: #111;
+  font-family: 'Segoe UI', Roboto, -apple-system, 'Helvetica Neue', Arial;
+}
+
+/* Top bar */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 36px;
+  color: #ffffffaa;
+}
+
+.brand {
+  font-size: 14px;
+  color: #e9eef6;
+}
+
+.profile-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-text {
+  color: #cfcfe3;
+  font-size: 13px;
+}
+
+.login-btn {
+  background: #1fb6a0;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Hero area */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px 120px;
+}
+
+.hero-title {
+  font-size: 84px;
+  color: #ffffff;
+  margin: 6px 0 36px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 260px);
+  grid-template-rows: 120px 120px;
+  gap: 30px 44px;
+  align-items: center;
+  justify-content: center;
+}
+
+.card {
+  width: 260px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+  font-size: 20px;
+  font-weight: 700;
+  color: #222;
+}
+
+.card.cyan { background: #cfeef1; }
+.card.green { background: #d9f6b6; }
+.card.blue { background: #a6d8ff; }
+.card.pink { background: #f2c4f0; }
+
+/* Positioning like the screenshot: place cyan left, green top-center, blue top-right, pink center-bottom */
+.cards > .cyan { grid-column: 1; grid-row: 1; }
+.cards > .green { grid-column: 2; grid-row: 1; }
+.cards > .blue { grid-column: 3; grid-row: 1; }
+.cards > .pink { grid-column: 2; grid-row: 2; width: 260px; height: 110px; }
+
+/* Responsive */
+@media (max-width: 940px) {
+  .cards { grid-template-columns: repeat(2, 220px); grid-template-rows: repeat(2, 110px); gap: 20px; }
+  .hero-title { font-size: 56px; }
+}
+
+@media (max-width: 560px) {
+  .cards { grid-template-columns: 1fr; grid-auto-rows: 110px; }
+  .card { width: 320px; max-width: 86vw; }
+  .hero-title { font-size: 42px; }
+}
