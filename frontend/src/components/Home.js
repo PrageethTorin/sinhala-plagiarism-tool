@@ -11,10 +11,21 @@ export default function Home() {
         <h1 className="hero-title">සිංහල භාෂාව</h1>
 
         <div className="cards">
-          <div className="card cyan">Paraphrase Detection</div>
-          <div className="card green">Writing Style</div>
-          <div className="card blue">Writing Style</div>
-          <div className="card pink">Writing Style</div>
+          <a className="card-link" href="#/paraphrase">
+            <div className="card cyan">Paraphrase Detection</div>
+          </a>
+
+          <a className="card-link" href="#/writing-style-1">
+            <div className="card green">Writing Style</div>
+          </a>
+
+          <a className="card-link" href="#/writing-style-2">
+            <div className="card blue">Semantic Similarity</div>
+          </a>
+
+          <a className="card-link pink-link" href="#/writing-style-3">
+            <div className="card pink">Pretrained Models</div>
+          </a>
         </div>
       </main>
     </div>

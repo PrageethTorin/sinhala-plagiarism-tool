@@ -1,0 +1,38 @@
+.side-wrap {
+  width: 220px;
+  background: linear-gradient(180deg,#3b3761 0%, #403a72 100%);
+  padding: 32px 18px;
+  min-height: calc(100vh - 72px);
+  position: fixed;
+  left: 0;
+  top: 72px; /* sits below the navbar */
+  z-index: 40;
+}
+
+.side-nav { display:flex; flex-direction:column; gap:18px; }
+
+.side-btn {
+  display: inline-block;
+  padding: 12px 18px;
+  border-radius: 18px;
+  background: #f2c4f0;
+  color: #231f2f;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+}
+
+.side-btn:hover { transform: translateY(-3px); }
+
+@media (max-width: 900px) {
+  .side-wrap {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    min-height: auto;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}

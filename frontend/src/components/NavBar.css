@@ -1,12 +1,18 @@
 .navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px; /* fixed height so other components can align */
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 22px 48px;
+  padding: 0 48px; /* vertical centering handled by height */
   color: #ffffffcc;
   background: linear-gradient(180deg, #231f2f 0%, #2b2540 100%);
   box-shadow: 0 2px 12px rgba(0,0,0,0.45);
   border-bottom: 1px solid rgba(255,255,255,0.03);
+  z-index: 60;
 }
 
 .nav-brand {
