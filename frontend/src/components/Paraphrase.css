@@ -19,4 +19,62 @@
 /* ensure sidebar sits flush */
 .side-wrap { margin-top: 0; }
 
-@media (max-width:900px){ .par-body{flex-direction:column;} .side-wrap{width:100%;} .par-main{padding:20px; margin-left:0;} }
+@media (max-width:900px) { 
+  .par-body{flex-direction:column;} 
+  .side-wrap{width:100%;} 
+  .par-main{padding:20px; margin-left:0;} 
+}
+
+@media (max-width: 768px) {
+  .par-main {
+    margin-left: 0;
+    padding: 20px 16px;
+  }
+  
+  .par-title {
+    font-size: 20px;
+  }
+  
+  .par-card {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  .par-wrap {
+    padding-top: 56px;
+  }
+  
+  .par-main {
+    padding: 16px 12px;
+  }
+  
+  .par-title {
+    font-size: 18px;
+    margin-top: 12px;
+  }
+  
+  .original-box {
+    height: 140px;
+  }
+  
+  .par-card {
+    padding: 12px;
+    margin-top: 16px;
+  }
+  
+  .par-check {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .par-result {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .result-pill {
+    font-size: 24px;
+    padding: 12px 24px;
+  }
+}
