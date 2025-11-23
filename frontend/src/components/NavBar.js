@@ -13,10 +13,10 @@ export default function NavBar() {
         <a className="nav-profile" href="#/">My Profile</a>
         <button
           className="nav-login"
-          onClick={() => {
+          //onClick={() => {
             // navigate to login page via hash router
-            window.location.hash = '#/login';
-          }}
+          //  window.location.hash = '#/login';
+         // }}
         >
           Login
         </button>
