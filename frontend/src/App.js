@@ -15,6 +15,7 @@ function Feature({ title }) {
 
 function App() {
   const [route, setRoute] = useState(window.location.hash || '#/');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const onHash = () => setRoute(window.location.hash || '#/');
@@ -26,12 +27,12 @@ function App() {
   const path = route.replace('#', '') || '/';
 
   //if (path === '/login') return <Login />;
-  if (path === '/paraphrase') return <Paraphrase />;
+  if (path === '/paraphrase') return <Paraphrase sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
   if (path === '/writing-style-1') return <Feature title="Writing Style" />;
   if (path === '/writing-style-2') return <Feature title="Writing Style" />;
   if (path === '/writing-style-3') return <Feature title="Writing Style" />;
 
-  return <Home />;
+  return <Home sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 }
 
 export default App;

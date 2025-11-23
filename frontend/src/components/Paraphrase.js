@@ -3,12 +3,12 @@ import NavBar from './NavBar';
 import Sidebar from './Sidebar';
 import './Paraphrase.css';
 
-export default function Paraphrase() {
+export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
   return (
     <div className="par-wrap">
-      <NavBar />
+      <NavBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       <div className="par-body">
-        <Sidebar />
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
         <section className="par-main">
           <h1 className="par-title">Paraphrase Detection</h1>

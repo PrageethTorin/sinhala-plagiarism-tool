@@ -2,10 +2,10 @@ import React from 'react';
 import './Home.css';
 import NavBar from './NavBar';
 
-export default function Home() {
+export default function Home({ sidebarOpen, setSidebarOpen }) {
   return (
     <div className="home-container">
-      <NavBar />
+      <NavBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="hero">
         <h1 className="hero-title">සිංහල භාෂාව</h1>
