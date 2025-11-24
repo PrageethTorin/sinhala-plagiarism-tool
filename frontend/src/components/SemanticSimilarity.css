@@ -1,0 +1,127 @@
+.semantic-wrap { min-height:100vh; background:#26223a; color:#fff; padding-top:72px; }
+.semantic-body { display:flex; max-width:1200px; margin: 18px auto; }
+
+.semantic-main { flex:1; padding: 30px 40px; margin-left: 240px; }
+.semantic-title { text-align:center; margin-top: 18px; font-size:28px; color:#fff; }
+
+.semantic-card { border:1px solid rgba(255,255,255,0.12); padding:18px; border-radius:6px; margin-top:20px; }
+.lbl-block { color:#dcd7e6; font-weight:700; margin-bottom:8px; display:block; }
+.text-box { height:180px; background:#e6e6e6; border-radius:3px; }
+
+.semantic-actions { display:flex; align-items:center; justify-content:space-between; margin-top:12px; }
+.file-input { color:#d1cfe0; }
+.semantic-check { background:#1fb6a0; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:700; }
+.semantic-check:hover { background:#16a899; }
+
+.semantic-result { display:flex; align-items:center; justify-content:center; gap:18px; margin-top:36px; }
+.result-label { color:#7ec2c0; font-size:18px; }
+.result-pill { background:#f2c4f0; color:#231f2f; padding:16px 30px; border-radius:16px; font-weight:800; font-size:28px; }
+
+/* ensure sidebar sits flush */
+.side-wrap { margin-top: 0; }
+
+@media (max-width:1024px) { 
+  .semantic-main { padding: 25px 30px; margin-left: 220px; }
+}
+
+@media (max-width:900px) { 
+  .semantic-body{flex-direction:column;} 
+  .side-wrap{width:100%;} 
+  .semantic-main{padding:20px; margin-left:0;} 
+  .semantic-title { font-size: 24px; }
+}
+
+@media (max-width: 768px) {
+  .semantic-wrap { padding-top: 64px; }
+  
+  .semantic-main {
+    margin-left: 0;
+    padding: 20px 16px;
+  }
+  
+  .semantic-title {
+    font-size: 20px;
+  }
+  
+  .semantic-card {
+    padding: 12px;
+  }
+  
+  .text-box { height: 150px; }
+  
+  .semantic-actions { flex-wrap: wrap; gap: 10px; }
+  .file-input { flex: 1; min-width: 150px; }
+  .semantic-check { flex: 1; min-width: 100px; }
+}
+
+@media (max-width: 600px) {
+  .semantic-wrap {
+    padding-top: 56px;
+  }
+  
+  .semantic-main {
+    padding: 16px 12px;
+  }
+  
+  .semantic-title {
+    font-size: 18px;
+    margin-top: 12px;
+  }
+  
+  .text-box {
+    height: 120px;
+  }
+  
+  .semantic-card {
+    padding: 12px;
+    margin-top: 16px;
+  }
+  
+  .semantic-actions { flex-direction: column; }
+  .file-input { width: 100%; }
+  .semantic-check {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  .semantic-result {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .result-pill {
+    font-size: 24px;
+    padding: 12px 24px;
+  }
+}
+
+@media (max-width: 400px) {
+  .semantic-wrap { padding-top: 52px; }
+  
+  .semantic-main { padding: 12px 8px; }
+  
+  .semantic-title {
+    font-size: 16px;
+    margin-top: 8px;
+  }
+  
+  .text-box { height: 100px; }
+  
+  .semantic-card { 
+    padding: 8px; 
+    margin-top: 12px; 
+  }
+  
+  .semantic-check {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  
+  .result-label { font-size: 14px; }
+  
+  .result-pill {
+    font-size: 20px;
+    padding: 10px 20px;
+  }
+}
