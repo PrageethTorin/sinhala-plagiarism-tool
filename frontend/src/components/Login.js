@@ -5,12 +5,14 @@ export default function Login({ onSubmit }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const validateEmail = (e) => /\S+@\S+\.\S+/.test(e);
 
-  function handleContinue(e) {
+  async function handleContinue(e) {
     e.preventDefault();
     setError('');
+    
     if (!email) {
       setError('Email is required');
       return;
@@ -27,8 +29,23 @@ export default function Login({ onSubmit }) {
       setError('Password must be at least 6 characters');
       return;
     }
-    if (onSubmit) onSubmit(email, password);
-    console.log('Login with', email, password);
+
+    if (!onSubmit) {
+      window.location.hash = '#/';
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await onSubmit(email, password);
+      if (!result || !result.success) {
+        setError(result?.message || 'Invalid credentials');
+      }
+    } catch (err) {
+      setError(err?.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleOAuth(provider) {
@@ -66,7 +83,9 @@ export default function Login({ onSubmit }) {
 
           {error && <div className="login-error">{error}</div>}
 
-          <button type="submit" className="btn-continue">Continue</button>
+          <button type="submit" className="btn-continue" disabled={loading}>
+            {loading ? 'Signing in...' : 'Continue'}
+          </button>
         </form>
 
         <a className="login-help" href="#/">Can't sign in?</a>
@@ -78,12 +97,7 @@ export default function Login({ onSubmit }) {
           <button type="button" className="oauth-btn" onClick={() => handleOAuth('facebook')}>
             <span className="oauth-icon">f</span> Sign in with Facebook
           </button>
-          <button type="button" className="oauth-btn" onClick={() => handleOAuth('apple')}>
-            <span className="oauth-icon"></span> Sign in with Apple
-          </button>
-          <button type="button" className="oauth-btn" onClick={() => handleOAuth('sso')}>
-            <span className="oauth-icon">🔒</span> Sign in with Single Sign-On
-          </button>
+          
         </div>
 
         <p className="recaptcha-note">

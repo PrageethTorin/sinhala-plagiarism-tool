@@ -2,30 +2,86 @@ import React from 'react';
 import './Home.css';
 import NavBar from './NavBar';
 
-export default function Home() {
+export default function Home({ sidebarOpen, setSidebarOpen }) {
   return (
     <div className="home-container">
-      <NavBar />
+      <NavBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      <main className="hero">
-        <h1 className="hero-title">සිංහල භාෂාව</h1>
+      <main className="hero-section">
+        <div className="hero-content">
+          <div className="hero-left">
+            <h1 className="hero-title">
+              <span className="highlight">Sinhala</span> Plagiarism Checker now
+              <br />
+              Enhanced with <span className="ai-highlight">AI Content Detector</span>
+            </h1>
+            
+            <p className="hero-description">
+              Our advanced plagiarism checker verifies against internet sources, academic databases and AI-generated content to give you the most comprehensive plagiarism detection.
+            </p>
 
-        <div className="cards">
-          <a className="card-link" href="#/paraphrase">
-            <div className="card cyan">Paraphrase Detection</div>
-          </a>
+            <a href="#/paraphrase" className="btn-check-now">Check Now</a>
+          </div>
 
-          <a className="card-link" href="#/writing-style-1">
-            <div className="card green">Writing Style</div>
-          </a>
+          <div className="hero-right">
+            <img 
+              src="https://imgur.com/4eOuzSJ.png" 
+              alt="Plagiarism Detection Illustration"
+              className="hero-image"
+            />
+          </div>
+        </div>
 
-          <a className="card-link" href="#/writing-style-2">
-            <div className="card blue">Semantic Similarity</div>
-          </a>
+        <div className="stats-section">
+          <div className="stat-card">
+            <div className="stat-number">82M+</div>
+            <div className="stat-label">Scholarly Articles</div>
+          </div>
 
-          <a className="card-link pink-link" href="#/writing-style-3">
-            <div className="card pink">Pretrained Models</div>
-          </a>
+          <div className="stat-card">
+            <div className="stat-number">91B+</div>
+            <div className="stat-label">Web Pages Indexed</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-number">153M+</div>
+            <div className="stat-label">Open Access Articles</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-number">102M+</div>
+            <div className="stat-label">Pages Updated Daily</div>
+          </div>
+        </div>
+
+        <div className="features-section">
+          <h2 className="features-title">Our Features</h2>
+          
+          <div className="features-grid">
+            <a href="#/paraphrase" className="feature-card paraphrase-card">
+              <div className="card-icon">📄</div>
+              <h3>Paraphrase Detection</h3>
+              <p>Detect paraphrased content and rewritten text</p>
+            </a>
+
+            <a href="#/writing-style-1" className="feature-card writing-card">
+              <div className="card-icon">✍️</div>
+              <h3>Writing Style</h3>
+              <p>Analyze and identify writing patterns</p>
+            </a>
+
+            <a href="#/writing-style-2" className="feature-card similarity-card">
+              <div className="card-icon">🔍</div>
+              <h3>Semantic Similarity</h3>
+              <p>Find semantically similar content</p>
+            </a>
+
+            <a href="#/pretrained" className="feature-card pretrained-card">
+              <div className="card-icon">🤖</div>
+              <h3>Pretrained Models</h3>
+              <p>AI-powered plagiarism detection</p>
+            </a>
+          </div>
         </div>
       </main>
     </div>
