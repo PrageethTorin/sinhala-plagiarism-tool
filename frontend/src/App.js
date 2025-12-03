@@ -3,6 +3,7 @@ import './App.css';
 import Home from './components/Home';
 import Login from './components/Login';
 import Paraphrase from './components/Paraphrase';
+import SemanticSimilarity from './components/SemanticSimilarity';
 import Pretrained from './components/Pretrained';
 
 function Feature({ title }) {
@@ -34,10 +35,10 @@ function App() {
     return <Paraphrase sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 
   // keep your original pretrained route
-  if (path === '/pretrained') return <Pretrained />;
+  if (path === '/pretrained') return <Pretrained sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 
   if (path === '/writing-style-1') return <Feature title="Writing Style" />;
-  if (path === '/writing-style-2') return <Feature title="Writing Style" />;
+  if (path === '/writing-style-2') return <SemanticSimilarity sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
   if (path === '/writing-style-3') return <Feature title="Writing Style" />;
 
   return <Home sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;

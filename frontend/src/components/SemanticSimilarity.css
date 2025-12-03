@@ -1,0 +1,149 @@
+.sem-wrap {
+  min-height: 100vh;
+  background: #26223a;
+  color: #fff;
+  padding-top: 72px;
+}
+
+.sem-body {
+  display: flex;
+  max-width: 1200px;
+  margin: 18px auto;
+}
+
+.sem-main {
+  flex: 1;
+  padding: 30px 40px;
+  margin-left: 240px;
+}
+
+.sem-title {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 28px;
+  color: #fff;
+}
+
+/* Card Box */
+.sem-card {
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 18px;
+  border-radius: 6px;
+  margin-top: 20px;
+}
+
+.lbl-block {
+  color: #dcd7e6;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* Document box */
+.semantic-box {
+  height: 180px;
+  background: #e6e6e6;
+  border-radius: 3px;
+}
+
+/* File & Check buttons row */
+.sem-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.file-input {
+  color: #d1cfe0;
+}
+
+.file-name {
+  color: #c7c7c7;
+  flex: 1;
+  margin-left: 12px;
+}
+
+.sem-check {
+  background: #1fb6a0;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.sem-check:hover {
+  background: #16a899;
+}
+
+.sem-check:disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Result Display */
+.sem-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 36px;
+}
+
+.result-label {
+  color: #7ec2c0;
+  font-size: 18px;
+}
+
+.result-pill {
+  background: #f2c4f0;
+  color: #231f2f;
+  padding: 16px 30px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 28px;
+}
+
+/* Sidebar responsive */
+@media (max-width:900px){
+  .sem-body { flex-direction: column; }
+  .sem-main { padding:20px; margin-left:0; }
+}
+
+@media (max-width: 768px) {
+  .sem-wrap { padding-top: 64px; }
+  .sem-main { padding: 20px 16px; }
+  .sem-title { font-size: 20px; }
+  .sem-card { padding: 12px; }
+  .semantic-box { height: 150px; }
+  .sem-actions { flex-wrap: wrap; gap: 10px; }
+  .file-input { flex: 1; min-width: 150px; }
+  .sem-check { flex: 1; min-width: 100px; }
+}
+
+@media (max-width: 600px) {
+  .sem-wrap { padding-top: 56px; }
+  .sem-main { padding: 16px 12px; }
+  .sem-title { font-size: 18px; margin-top: 12px; }
+  .semantic-box { height: 120px; }
+  .sem-card { padding: 12px; margin-top: 16px; }
+  .sem-actions { flex-direction: column; }
+  .file-input { width: 100%; }
+  .file-name { width: 100%; margin: 8px 0; }
+  .sem-check { width: 100%; padding: 10px 12px; font-size: 13px; }
+  .sem-result { flex-direction: column; gap: 12px; }
+  .result-pill { font-size: 24px; padding: 12px 24px; }
+}
+
+@media (max-width: 400px) {
+  .sem-wrap { padding-top: 52px; }
+  .sem-main { padding: 12px 8px; }
+  .sem-title { font-size: 16px; margin-top: 8px; }
+  .semantic-box { height: 100px; }
+  .sem-card { padding: 8px; margin-top: 12px; }
+  .sem-check { padding: 8px 10px; font-size: 12px; }
+  .result-label { font-size: 14px; }
+  .result-pill { font-size: 20px; padding: 10px 20px; }
+}
