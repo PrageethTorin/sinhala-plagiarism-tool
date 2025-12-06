@@ -3,7 +3,7 @@ import NavBar from './NavBar';
 import Sidebar from './Sidebar';
 import './Pretrained.css';
 
-export default function Pretrained() {
+export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
 const [file, setFile] = useState(null);
 const [fileName, setFileName] = useState('No file chosen');
 const [loading, setLoading] = useState(false);
@@ -50,11 +50,11 @@ try {
 
 };
 
-return ( <div className="pre-wrap"> <NavBar />
+return ( <div className="pre-wrap"> <NavBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
 
   <div className="pre-body">
-    <Sidebar />
+    <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
     <section className="pre-main">
       <h1 className="pre-title">Pretrained Detection</h1>

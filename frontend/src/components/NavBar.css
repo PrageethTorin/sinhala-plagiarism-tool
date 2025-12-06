@@ -37,6 +37,13 @@
   font-size: 18px;
   color: #e9eef6;
   font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.nav-brand:hover {
+  color: #1fb6a0;
 }
 
 .nav-right {

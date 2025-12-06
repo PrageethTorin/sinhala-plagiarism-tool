@@ -1,139 +1,157 @@
-// frontend/src/components/SemanticSimilarity.js
 import React, { useState } from "react";
 import NavBar from "./NavBar";
 import Sidebar from "./Sidebar";
 import "./SemanticSimilarity.css";
 
 export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
-  const [original, setOriginal] = useState("");
-  const [comparison, setComparison] = useState(""); // text loaded from file or typed
+  const [file, setFile] = useState(null);
+  const [fileName, setFileName] = useState("No file chosen");
+  const [googleDocURL, setGoogleDocURL] = useState("");
+  const [useWebSearch, setUseWebSearch] = useState(true);
+
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null); // { score, label }
+  const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
-  // change if your backend uses a different host/port
   const BACKEND_URL = "http://127.0.0.1:8000";
 
-  // File input -> read text content and set as comparison text
   const handleFileChange = (e) => {
-    setError(null);
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target.result;
-      setComparison(text);
-    };
-    reader.onerror = () => {
-      setError("Failed to read file. Make sure it's a text file (.txt).");
-    };
-    reader.readAsText(file, "UTF-8");
+    const f = e.target.files[0];
+    if (f) {
+      setFile(f);
+      setFileName(f.name);
+      setError(null);
+      setResult(null);
+    }
   };
 
-  async function onCheck() {
-    setError(null);
-    setResult(null);
-
-    // basic validation
-    if (!original?.trim()) {
-      setError("Please enter the Original text.");
-      return;
-    }
-    if (!comparison?.trim()) {
-      setError("Please enter or upload the Comparison text (file or paste).");
+  const handleCheck = async () => {
+    if (!file) {
+      alert("Please choose a document");
       return;
     }
 
     setLoading(true);
+    setError(null);
+    setResult(null);
+
     try {
-      const res = await fetch(`${BACKEND_URL}/api/similarity`, {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("google_doc_url", googleDocURL || "");
+      form.append("use_web_search", useWebSearch ? "1" : "0");
+
+      const res = await fetch(`${BACKEND_URL}/api/upload_file_compare`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ a: original, b: comparison }),
+        body: form,
       });
 
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(`Server error ${res.status}: ${txt}`);
       }
+
       const data = await res.json();
-      // data expected: { score: 0.87, label: "High" }
-      setResult(data);
+      setResult(data.result);
     } catch (err) {
       console.error(err);
-      setError(err.message || "Unknown error calling API");
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
-  }
-
-  const percent = result ? `${(result.score * 100).toFixed(1)}%` : "—";
+  };
 
   return (
-    <div className="semantic-wrap">
+    <div className="sem-wrap">
       <NavBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      <div className="semantic-body">
+
+      <div className="sem-body">
         <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-        <section className="semantic-main">
-          <h1 className="semantic-title">Semantic Similarity</h1>
+        <section className="sem-main">
+          <h1 className="sem-title">Semantic Similarity Checker</h1>
 
-          <div className="semantic-card">
-            <label className="lbl-block">Original:</label>
-            <textarea
-              className="text-box"
-              value={original}
-              onChange={(e) => setOriginal(e.target.value)}
-              placeholder="Paste the original text here..."
-              rows={8}
-            />
+          {/* Upload card */}
+          <div className="sem-card">
+            <label className="lbl-block">Upload Document (.pdf / .txt / .docx)</label>
+            <div className="semantic-box" />
 
-            <label className="lbl-block" style={{ marginTop: 12 }}>
-              Comparison (paste text or upload a .txt file):
-            </label>
-            <textarea
-              className="text-box"
-              value={comparison}
-              onChange={(e) => setComparison(e.target.value)}
-              placeholder="Paste the text to compare or choose a file..."
-              rows={6}
-            />
-
-            <div className="semantic-actions" style={{ marginTop: 10 }}>
+            <div className="sem-actions">
               <input
                 type="file"
                 className="file-input"
-                accept=".txt"
+                accept=".pdf,.txt,.docx"
                 onChange={handleFileChange}
               />
-              <button
-                className="semantic-check"
-                onClick={onCheck}
-                disabled={loading}
-              >
+              <span className="file-name">{fileName}</span>
+
+              <button className="sem-check" disabled={loading} onClick={handleCheck}>
                 {loading ? "Checking..." : "Check"}
               </button>
             </div>
-          </div>
 
-          <div className="semantic-result" style={{ marginTop: 18 }}>
-            <div className="result-label">Similarity Score</div>
-            <div className="result-pill" style={{ minWidth: 80 }}>
-              {result ? percent : "—"}
+            {/* Web search toggle */}
+            <div className="web-toggle">
+              <label className="toggle-label">
+                <input
+                  type="checkbox"
+                  checked={useWebSearch}
+                  onChange={(e) => setUseWebSearch(e.target.checked)}
+                />
+                Enable Web Search (Google)
+              </label>
             </div>
 
-            <div style={{ marginTop: 8 }}>
-              {result && (
-                <div>
-                  <strong>Label:</strong> {result.label}
+            {/* Google Doc URL Field */}
+            <div className="google-doc-box">
+              <label className="lbl-block">Google Doc URL (optional)</label>
+              <input
+                type="text"
+                className="google-input"
+                placeholder="https://docs.google.com/document/d/..."
+                value={googleDocURL}
+                onChange={(e) => setGoogleDocURL(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Error message */}
+          {error && <div className="error-box">⚠️ {error}</div>}
+
+          {/* Results */}
+          {result && (
+            <div className="result-section">
+              <div className="sem-result">
+                <div className="result-label">Overall Document Score</div>
+                <div className="result-pill">{result.document_score}%</div>
+              </div>
+
+              <h3 className="paragraph-title">Paragraph Matches</h3>
+
+              {result.paragraphs.map((p) => (
+                <div key={p.index} className="paragraph-card">
+                  <strong>
+                    Paragraph {p.index + 1} — Score: {p.paragraph_score}%
+                  </strong>
+
+                  <div className="paragraph-text">{p.text}</div>
+
+                  <div className="match-list">
+                    <strong>Top Matches:</strong>
+                    {p.matches.map((m, idx) => (
+                      <div key={idx} className="match-box">
+                        <div><strong>Match #{idx + 1}</strong></div>
+                        <div className="scores">
+                          Semantic: {m.semantic.toFixed(3)} | Lexical: {m.lexical.toFixed(3)}
+                        </div>
+                        <div className="match-text">{m.corpus_text}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
-              {error && (
-                <div style={{ color: "crimson", marginTop: 8 }}>{error}</div>
-              )}
+              ))}
             </div>
-          </div>
+          )}
         </section>
       </div>
     </div>

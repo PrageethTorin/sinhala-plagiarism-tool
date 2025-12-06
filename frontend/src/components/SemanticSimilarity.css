@@ -1,204 +1,216 @@
-/* Semantic Similarity component styles (updated) */
-
-.semantic-wrap {
+/* MAIN WRAPPER */
+.sem-wrap {
   min-height: 100vh;
-  background: linear-gradient(180deg, #2a243a 0%, #241f33 100%);
-  color: #eef0f6;
+  background: #26223a;
+  color: #fff;
   padding-top: 72px;
-  font-family: "Helvetica Neue", Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-.semantic-body {
+/* LAYOUT */
+.sem-body {
   display: flex;
   max-width: 1200px;
   margin: 18px auto;
+}
+
+.sem-main {
+  flex: 1;
+  padding: 30px 40px;
+  margin-left: 240px;
+}
+
+.sem-title {
+  text-align: center;
+  font-size: 28px;
+  margin-top: 10px;
+}
+
+/* CARD */
+.sem-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 18px;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+
+.lbl-block {
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #e2e2e2;
+}
+
+/* GRAY DOCUMENT BOX */
+.semantic-box {
+  height: 150px;
+  background: #ddd;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+/* FILE INPUT */
+.sem-actions {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-/* main content area */
-.semantic-main {
+.file-input {
+  color: #fff;
+}
+
+.file-name {
   flex: 1;
-  padding: 34px 44px;
-  margin-left: 240px; /* keeps space for your sidebar */
-  box-sizing: border-box;
+  color: #c7c7c7;
 }
 
-/* title */
-.semantic-title {
-  text-align: center;
-  margin-top: 6px;
-  font-size: 30px;
-  color: #ffffff;
-  letter-spacing: 0.4px;
-}
-
-/* card for inputs */
-.semantic-card {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 18px;
+/* CHECK BUTTON */
+.sem-check {
+  background: #1fb6a0;
+  border: none;
+  padding: 10px 16px;
   border-radius: 8px;
-  margin-top: 20px;
-  background: rgba(0,0,0,0.03);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-}
-
-/* labels */
-.lbl-block {
-  color: #dcd7e6;
+  color: #fff;
+  cursor: pointer;
   font-weight: 700;
-  margin-bottom: 8px;
-  display: block;
-  font-size: 14px;
 }
 
-/* textareas used for original & comparison */
-.text-box {
+.sem-check:hover {
+  background: #16a899;
+}
+
+.sem-check:disabled {
+  opacity: 0.6;
+}
+
+/* GOOGLE DOC INPUT */
+.google-doc-box {
+  margin-top: 14px;
+}
+
+.google-input {
   width: 100%;
-  resize: vertical;
-  min-height: 140px;
-  max-height: 380px;
-  background: #f3f3f4;
-  color: #222;
+  padding: 10px;
   border-radius: 6px;
-  border: 1px solid rgba(0,0,0,0.06);
-  padding: 12px;
-  font-size: 14px;
-  line-height: 1.4;
-  box-sizing: border-box;
-  font-family: "Noto Sans", "Segoe UI", sans-serif;
+  border: none;
   outline: none;
 }
 
-/* better focus outline */
-.text-box:focus {
-  box-shadow: 0 0 0 3px rgba(31,182,160,0.12);
-  border-color: rgba(31,182,160,0.8);
+/* WEB SEARCH TOGGLE */
+.web-toggle {
+  margin-top: 14px;
 }
 
-/* actions row: file input + button */
-.semantic-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
+.toggle-label {
+  font-weight: 600;
 }
 
-/* file input - keep native look but align */
-.file-input {
-  color: #d1cfe0;
-  background: transparent;
-  border: none;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-/* primary check button */
-.semantic-check {
-  background: linear-gradient(180deg, #1fb6a0 0%, #159f8e 100%);
-  color: white;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 800;
-  box-shadow: 0 8px 20px rgba(31,182,160,0.18);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-}
-.semantic-check:hover { transform: translateY(-2px); }
-.semantic-check:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-/* result area */
-.semantic-result {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 18px;
-  margin-top: 28px;
-  padding: 12px 6px;
-}
-
-.result-label {
-  color: #9fe7df;
-  font-size: 18px;
+/* ERROR BOX */
+.error-box {
+  margin-top: 16px;
+  padding: 12px;
+  background: #ff3b3b;
+  border-radius: 6px;
+  color: #fff;
   font-weight: 700;
 }
 
-/* pill with percent */
+/* RESULT DISPLAY */
+.sem-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 30px;
+}
+
+.result-label {
+  font-size: 20px;
+  color: #7ec2c0;
+}
+
 .result-pill {
-  background: linear-gradient(90deg, #f7b2f0 0%, #f7d9b8 100%);
-  color: #231f2f;
-  padding: 14px 28px;
-  border-radius: 999px;
+  background: #f2c4f0;
+  padding: 14px 26px;
+  border-radius: 16px;
+  font-size: 28px;
   font-weight: 800;
-  font-size: 26px;
-  letter-spacing: 0.4px;
-  min-width: 120px;
-  text-align: center;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  color: #231f2f;
 }
 
-/* small meta under result */
-.semantic-result small {
-  display: block;
-  color: #d9d3e6;
+/* PARAGRAPH RESULTS */
+.paragraph-title {
+  margin-top: 24px;
+  font-size: 22px;
+}
+
+.paragraph-card {
+  background: rgba(255,255,255,0.06);
+  padding: 14px;
+  margin-top: 16px;
+  border-radius: 8px;
+}
+
+.paragraph-text {
+  margin-top: 8px;
+  white-space: pre-wrap;
+}
+
+.match-list {
+  margin-top: 14px;
+}
+
+.match-box {
+  background: rgba(255,255,255,0.05);
+  padding: 10px;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.scores {
+  color: #a3f3ec;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.match-text {
+  color: #ddd;
   margin-top: 6px;
+  white-space: pre-wrap;
 }
 
-/* keep sidebar flush with top */
-.side-wrap { margin-top: 0; }
-
-/* responsiveness */
-@media (max-width: 1024px) {
-  .semantic-main { padding: 28px 32px; margin-left: 220px; }
-  .semantic-title { font-size: 26px; }
+/* EMPHASIZED COMBINED SCORE (NEW - IMPORTANT) */
+.primary-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 28px;
 }
 
+.result-label-large {
+  color: #7ec2c0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.result-pill-large {
+  background: #f2c4f0;
+  color: #231f2f;
+  padding: 18px 36px;
+  border-radius: 22px;
+  font-weight: 900;
+  font-size: 34px;
+}
+
+/* RESPONSIVE */
 @media (max-width: 900px) {
-  .semantic-body { flex-direction: column; }
-  .side-wrap { width: 100%; }
-  .semantic-main { padding: 20px; margin-left: 0; }
-  .semantic-title { font-size: 22px; }
-  .text-box { min-height: 120px; }
-  .semantic-actions { gap: 10px; }
-  .file-input { flex: 1; min-width: 150px; text-align: left; }
-  .semantic-check { min-width: 120px; }
+  .sem-body { flex-direction: column; }
+  .sem-main { margin-left: 0; }
 }
 
-@media (max-width: 768px) {
-  .semantic-wrap { padding-top: 64px; }
-  .semantic-main { padding: 18px 16px; }
-  .semantic-title { font-size: 20px; margin-top: 4px; }
-  .semantic-card { padding: 12px; }
-  .text-box { min-height: 100px; }
-  .semantic-actions { flex-wrap: wrap; gap: 8px; }
-  .semantic-check { width: 100%; padding: 10px; }
-  .result-pill { min-width: 100px; font-size: 22px; padding: 10px 18px; }
-}
-
-@media (max-width: 480px) {
-  .semantic-main { padding: 16px 12px; }
-  .text-box { min-height: 90px; }
-  .semantic-title { font-size: 18px; }
-  .semantic-card { padding: 10px; margin-top: 12px; }
-  .semantic-result { flex-direction: column; align-items: flex-start; gap: 10px; }
-  .result-pill { font-size: 20px; padding: 10px 16px; }
-}
-
-/* small visual polish for scrollbar inside textareas (webkit) */
-.text-box::-webkit-scrollbar { width: 10px; height: 10px; }
-.text-box::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.25);
-  border-radius: 10px;
-}
-.text-box::-webkit-scrollbar-track {
-  background: rgba(255,255,255,0.02);
-  border-radius: 10px;
+@media (max-width: 600px) {
+  .sem-main { padding: 20px; }
+  .sem-actions { flex-direction: column; align-items: flex-start; }
+  .sem-check { width: 100%; }
 }
