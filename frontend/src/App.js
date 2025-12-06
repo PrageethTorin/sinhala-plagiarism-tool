@@ -3,6 +3,7 @@ import './App.css';
 import Home from './components/Home';
 import Login from './components/Login';
 import Paraphrase from './components/Paraphrase';
+import Pretrained from './components/Pretrained';
 
 function Feature({ title }) {
   return (
@@ -12,7 +13,6 @@ function Feature({ title }) {
     </div>
   );
 }
-
 
 function App() {
   const [route, setRoute] = useState(window.location.hash || '#/');
@@ -28,7 +28,7 @@ function App() {
   const path = route.replace('#', '') || '/';
 
   if (path === '/login') return <Login />;
-  if (path === '/paraphrase') return <Paraphrase sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+  if (path === '/paraphrase') return <Paraphrase />;
   if (path === '/writing-style-1') return <Feature title="Writing Style" />;
   if (path === '/writing-style-2') return <Feature title="Writing Style" />;
   if (path === '/writing-style-3') return <Feature title="Writing Style" />;
