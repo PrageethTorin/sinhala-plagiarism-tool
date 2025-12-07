@@ -15,7 +15,7 @@ export default function NavBar({ sidebarOpen, setSidebarOpen }) {
       </button>
 
       <div className="nav-left">
-        <div className="nav-brand">Sinhala Plagiarism Tool</div>
+        <a href="#/" className="nav-brand">Sinhala Plagiarism Tool</a>
       </div>
 
       <div className="nav-right">
