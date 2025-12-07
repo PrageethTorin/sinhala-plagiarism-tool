@@ -24,7 +24,7 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
 
           <div className="par-result">
             <div className="result-label">Paraphrase Level</div>
-            <div className="result-pill">46%</div>
+            <div className="result-pill">47%</div>
           </div>
         </section>
       </div>
