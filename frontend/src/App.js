@@ -24,16 +24,15 @@ function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  // simple hash router
   const path = route.replace('#', '') || '/';
 
   if (path === '/login') return <Login />;
 
-  // merged correctly
+  // paraphrase page (keep this exact)
   if (path === '/paraphrase')
     return <Paraphrase sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 
-  // keep your original pretrained route
+  // pretrained page (this was part of your new change → KEEP)
   if (path === '/pretrained') return <Pretrained />;
 
   if (path === '/writing-style-1') return <Feature title="Writing Style" />;
