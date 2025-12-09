@@ -203,6 +203,18 @@
   font-size: 34px;
 }
 
+/* one-paragraph box */
+.para-box {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  margin-bottom: 8px;
+  background: #fafafa;
+  color: #111;
+}
+
 /* RESPONSIVE */
 @media (max-width: 900px) {
   .sem-body { flex-direction: column; }

@@ -1,20 +1,30 @@
+// frontend/src/components/SemanticSimilarity.js
 import React, { useState } from "react";
 import NavBar from "./NavBar";
 import Sidebar from "./Sidebar";
 import "./SemanticSimilarity.css";
 
 export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
+  // File upload states
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState("No file chosen");
   const [googleDocURL, setGoogleDocURL] = useState("");
   const [useWebSearch, setUseWebSearch] = useState(true);
 
+  // Generic
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  // Single-paragraph states
+  const [singlePara, setSinglePara] = useState("");
+  const [paraLoading, setParaLoading] = useState(false);
+  const [paraResult, setParaResult] = useState(null);
+
+  // change if your backend is hosted somewhere else
   const BACKEND_URL = "http://127.0.0.1:8000";
 
+  // File handling
   const handleFileChange = (e) => {
     const f = e.target.files[0];
     if (f) {
@@ -25,6 +35,7 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     }
   };
 
+  // Upload file -> backend extraction + compare
   const handleCheck = async () => {
     if (!file) {
       alert("Please choose a document");
@@ -38,10 +49,11 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     try {
       const form = new FormData();
       form.append("file", file);
-      form.append("google_doc_url", googleDocURL || "");
+      if (googleDocURL) form.append("google_doc_url", googleDocURL);
       form.append("use_web_search", useWebSearch ? "1" : "0");
 
-      const res = await fetch(`${BACKEND_URL}/api/upload_file_compare`, {
+      // NOTE: updated path to include /semantic prefix
+      const res = await fetch(`${BACKEND_URL}/semantic/api/upload_file_compare`, {
         method: "POST",
         body: form,
       });
@@ -52,12 +64,54 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
       }
 
       const data = await res.json();
-      setResult(data.result);
+      // backend returns { source_count, result } (or just result)
+      setResult(data.result ?? data);
     } catch (err) {
       console.error(err);
       setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Single paragraph web/doc check
+  const handleParagraphCheck = async () => {
+    if (!singlePara || !singlePara.trim()) {
+      alert("Please paste a paragraph to check");
+      return;
+    }
+
+    setParaLoading(true);
+    setParaResult(null);
+    setError(null);
+
+    try {
+      const payload = {
+        paragraph: singlePara,
+        top_k: 3,
+        google_doc_url: googleDocURL || null,
+        use_web_search: useWebSearch,
+      };
+
+      // NOTE: updated path to include /semantic prefix
+      const res = await fetch(`${BACKEND_URL}/semantic/api/paragraph_web_check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`Server error ${res.status}: ${txt}`);
+      }
+
+      const data = await res.json();
+      setParaResult(data);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Paragraph check failed");
+    } finally {
+      setParaLoading(false);
     }
   };
 
@@ -91,19 +145,19 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
             </div>
 
             {/* Web search toggle */}
-            <div className="web-toggle">
+            <div className="web-toggle" style={{ marginTop: 12 }}>
               <label className="toggle-label">
                 <input
                   type="checkbox"
                   checked={useWebSearch}
                   onChange={(e) => setUseWebSearch(e.target.checked)}
                 />
-                Enable Web Search (Google)
+                &nbsp;Enable Web Search (Google)
               </label>
             </div>
 
             {/* Google Doc URL Field */}
-            <div className="google-doc-box">
+            <div className="google-doc-box" style={{ marginTop: 12 }}>
               <label className="lbl-block">Google Doc URL (optional)</label>
               <input
                 type="text"
@@ -118,7 +172,7 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
           {/* Error message */}
           {error && <div className="error-box">⚠️ {error}</div>}
 
-          {/* Results */}
+          {/* Results from document upload */}
           {result && (
             <div className="result-section">
               <div className="sem-result">
@@ -152,6 +206,57 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
               ))}
             </div>
           )}
+
+          {/* ---------------- Single paragraph check ---------------- */}
+          <div className="section-title" style={{ marginTop: 28 }}>
+            Check a Single Paragraph (Web / Google Doc)
+          </div>
+
+          <div className="sem-card" style={{ marginTop: 10 }}>
+            <textarea
+              className="para-box"
+              placeholder="Paste one paragraph here (one idea / one paragraph)..."
+              value={singlePara}
+              onChange={(e) => setSinglePara(e.target.value)}
+            />
+
+            <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 8 }}>
+              <button className="sem-check" onClick={handleParagraphCheck} disabled={paraLoading}>
+                {paraLoading ? "Checking..." : "Check Paragraph"}
+              </button>
+
+              <div style={{ color: "#c7c7c7", fontSize: 14 }}>
+                Optional: uses same Google Doc URL and web toggle above
+              </div>
+            </div>
+
+            {/* Show paragraph result */}
+            {paraResult && (
+              <div style={{ marginTop: 16 }}>
+                <div className="primary-result">
+                  <div className="result-label-large">Paragraph Combined Score</div>
+                  <div className="result-pill-large">{paraResult.paragraph_score}%</div>
+                </div>
+
+                <h4 style={{ marginTop: 12 }}>Top Matches</h4>
+                {paraResult.matches && paraResult.matches.length ? (
+                  paraResult.matches.map((m, i) => (
+                    <div key={i} className="match-box" style={{ marginTop: 10 }}>
+                      <div style={{ fontWeight: 700 }}>Match #{i + 1} — Combined {(m.combined * 100).toFixed(2)}%</div>
+                      <div style={{ color: "#9ee7e2", marginTop: 6 }}>
+                        Semantic: {(m.semantic * 100).toFixed(2)}% • Lexical: {(m.lexical * 100).toFixed(2)}% • Stylometric: {(m.stylometric * 100).toFixed(2)}%
+                      </div>
+                      <div style={{ marginTop: 8, background: "#fff", color: "#222", padding: 8, borderRadius: 6, whiteSpace: "pre-wrap" }}>
+                        {m.corpus_text}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ color: "#999", marginTop: 8 }}>No matches found in web/docs.</div>
+                )}
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </div>
