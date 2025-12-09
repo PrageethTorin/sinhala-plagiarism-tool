@@ -33,10 +33,6 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
           <div className="ws-result">
             <div className="ws-result-label">Style Score</div>
             <div className="ws-score-pill">87%</div>
-            <div className="ws-metrics">
-              <span>Vocabulary Diversity: High</span>
-              <span>Sentence Complexity: Medium</span>
-            </div>
           </div>
         </section>
       </div>
