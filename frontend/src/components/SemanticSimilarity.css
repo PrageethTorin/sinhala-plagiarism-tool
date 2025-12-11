@@ -1,46 +1,120 @@
+:root {
+  --sidebar-width: 260px;
+  --nav-height: 72px;
+
+  /* Purple theme (same as sidebar) */
+  --accent-purple: #a855f7;
+  --accent-purple-tint: rgba(168, 85, 247, 0.12);
+  --accent-purple-border: rgba(168, 85, 247, 0.28);
+}
+
 /* MAIN WRAPPER */
 .sem-wrap {
   min-height: 100vh;
   background: #26223a;
   color: #fff;
-  padding-top: 72px;
+  padding-top: var(--nav-height);
+  box-sizing: border-box;
 }
 
-/* LAYOUT */
+/* BODY & MAIN */
 .sem-body {
-  display: flex;
-  max-width: 1200px;
-  margin: 18px auto;
-}
-
-.sem-main {
-  flex: 1;
+  flex: 1 1;
   padding: 30px 40px;
   margin-left: 240px;
 }
 
+/* MAIN CONTENT */
+.sem-main {
+  width: 100%;
+  padding: 30px 40px;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 10;
+}
+
+/* CENTER CONTENT */
+.sem-card,
+.page-card {
+  max-width: 980px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* TITLE */
 .sem-title {
   text-align: center;
   font-size: 28px;
   margin-top: 10px;
 }
 
-/* CARD */
-.sem-card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.15);
-  padding: 18px;
-  border-radius: 10px;
-  margin-top: 20px;
+/* TAB BAR */
+.tab-bar {
+  display: inline-flex;
+  gap: 12px;
+  margin: 20px 0;
 }
 
+/* ------------ TAB POP EFFECT (NEW) ------------- */
+
+.tab {
+  background: transparent;
+  color: #ddd;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.22s ease;
+  transform-origin: center;
+}
+
+/* Small hover lift */
+.tab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+/* ACTIVE TAB — purple pop like sidebar */
+.tab.active {
+  background-color: var(--accent-purple-tint);
+  border-color: var(--accent-purple-border);
+  color: #e0aaff;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(168, 85, 247, 0.12);
+}
+
+/* Underline glow */
+.tab.active::after {
+  content: "";
+  display: block;
+  height: 3px;
+  width: 48%;
+  margin: 8px auto 0;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--accent-purple) 0%, #c77dff 100%);
+  opacity: 0.95;
+}
+
+/* ----------------------------------------------- */
+
+/* CARD */
+.sem-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 18px;
+  border-radius: 10px;
+  margin-top: 6px;
+}
+
+/* LABELS */
 .lbl-block {
   font-weight: 700;
   margin-bottom: 6px;
   color: #e2e2e2;
 }
 
-/* GRAY DOCUMENT BOX */
+/* GREY PREVIEW BOX */
 .semantic-box {
   height: 150px;
   background: #ddd;
@@ -48,7 +122,7 @@
   margin-bottom: 12px;
 }
 
-/* FILE INPUT */
+/* ACTIONS */
 .sem-actions {
   display: flex;
   align-items: center;
@@ -62,9 +136,10 @@
 .file-name {
   flex: 1;
   color: #c7c7c7;
+  word-break: break-all;
 }
 
-/* CHECK BUTTON */
+/* BUTTONS */
 .sem-check {
   background: #1fb6a0;
   border: none;
@@ -96,7 +171,7 @@
   outline: none;
 }
 
-/* WEB SEARCH TOGGLE */
+/* TOGGLE */
 .web-toggle {
   margin-top: 14px;
 }
@@ -138,14 +213,14 @@
   color: #231f2f;
 }
 
-/* PARAGRAPH RESULTS */
+/* PARAGRAPH RESULT SECTION */
 .paragraph-title {
   margin-top: 24px;
   font-size: 22px;
 }
 
 .paragraph-card {
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.06);
   padding: 14px;
   margin-top: 16px;
   border-radius: 8px;
@@ -154,6 +229,7 @@
 .paragraph-text {
   margin-top: 8px;
   white-space: pre-wrap;
+  color: #ddd;
 }
 
 .match-list {
@@ -161,7 +237,7 @@
 }
 
 .match-box {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   padding: 10px;
   border-radius: 6px;
   margin-top: 8px;
@@ -174,12 +250,12 @@
 }
 
 .match-text {
-  color: #ddd;
+  color: #111;
   margin-top: 6px;
   white-space: pre-wrap;
 }
 
-/* EMPHASIZED COMBINED SCORE (NEW - IMPORTANT) */
+/* PARAGRAPH COMBINED RESULT */
 .primary-result {
   display: flex;
   align-items: center;
@@ -203,26 +279,125 @@
   font-size: 34px;
 }
 
-/* one-paragraph box */
+/* PARAGRAPH TEXT AREA */
 .para-box {
   width: 100%;
-  min-height: 120px;
-  padding: 10px;
+  min-height: 140px;
+  padding: 12px;
   border-radius: 8px;
   border: none;
   margin-bottom: 8px;
   background: #fafafa;
   color: #111;
+  resize: vertical;
 }
+
+/* PARAGRAPH PAGE CONTROLS */
+.para-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* CLEAR BUTTON */
+.clear-btn {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.clear-btn:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
-  .sem-body { flex-direction: column; }
-  .sem-main { margin-left: 0; }
+  .sem-main {
+    margin-left: 0 !important;
+    padding: 18px;
+  }
+  .tab-bar {
+    gap: 8px;
+  }
+  .para-box {
+    min-height: 120px;
+  }
 }
 
-@media (max-width: 600px) {
-  .sem-main { padding: 20px; }
-  .sem-actions { flex-direction: column; align-items: flex-start; }
-  .sem-check { width: 100%; }
+@media (max-width: 768px) {
+  .semantic-wrap {
+    padding-top: 64px;
+  }
+  .semantic-main {
+    padding: 18px 16px;
+  }
+  .semantic-title {
+    font-size: 20px;
+    margin-top: 4px;
+  }
+  .semantic-card {
+    padding: 12px;
+  }
+  .text-box {
+    min-height: 100px;
+  }
+  .semantic-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .semantic-check {
+    width: 100%;
+    padding: 10px;
+  }
+  .result-pill {
+    min-width: 100px;
+    font-size: 22px;
+    padding: 10px 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .semantic-main {
+    padding: 16px 12px;
+  }
+  .text-box {
+    min-height: 90px;
+  }
+  .semantic-title {
+    font-size: 18px;
+  }
+  .semantic-card {
+    padding: 10px;
+    margin-top: 12px;
+  }
+  .semantic-result {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .result-pill {
+    font-size: 20px;
+    padding: 10px 16px;
+  }
+}
+
+/* Scrollbar (Webkit only) */
+.text-box::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.text-box::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+}
+.text-box::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
 }
