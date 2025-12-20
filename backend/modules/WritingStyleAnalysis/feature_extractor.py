@@ -1,6 +1,8 @@
 import re
 import json
 import os
+import win_unicode_console
+win_unicode_console.enable()
 
 class SinhalaStylometryExtractor:
     def __init__(self):
