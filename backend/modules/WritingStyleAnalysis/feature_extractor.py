@@ -1,56 +1,36 @@
 import re
-import json
 import os
-import win_unicode_console
-win_unicode_console.enable()
 
 class SinhalaStylometryExtractor:
     def __init__(self):
-        # Automatically find the stop words file in the same folder
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        stopword_path = os.path.join(current_dir, 'stopwords_sinhala.txt')
-        self.stopwords = self._load_stopwords(stopword_path)
+        self.stopword_path = os.path.join(current_dir, 'stopwords_sinhala.txt')
+        self.stop_words = self._load_stopwords()
+        self.formal_verbs = ['වේය', 'ගියේය', 'ලදී', 'ඇත', 'වෙති', 'කෙරේ', 'විය', 'පවතී', 'බවයි']
+        self.academic_connectors = ['සහ', 'හා', 'මගින්', 'විසින්', 'සඳහා', 'පිළිබඳ', 'එබැවින්', 'තවද']
 
-    def _load_stopwords(self, path):
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                return set([line.strip() for line in f])
-        except FileNotFoundError:
-            print("Warning: stopwords_sinhala.txt not found. Function word analysis will be skipped.")
-            return set()
+    def _load_stopwords(self):
+        if not os.path.exists(self.stopword_path): return []
+        with open(self.stopword_path, 'r', encoding='utf-8') as f:
+            return [line.strip() for line in f if line.strip()]
 
     def analyze_style(self, text):
-        if not text:
-            return None
-
-        # 1. Tokenization (Split into sentences and words)
-        # Regex splits by Sinhala (.) or English (.)
-        sentences = [s.strip() for s in re.split(r'[.]', text) if s.strip()]
-        words = text.split()
-
-        if len(words) == 0:
-            return None
-
-        # 2. Average Sentence Length
-        avg_sentence_len = len(words) / len(sentences) if sentences else 0
-
-        # 3. Vocabulary Richness (Type-Token Ratio)
-        unique_words = set(words)
-        vocab_richness = len(unique_words) / len(words)
-
-        # 4. Function Word Frequency
-        func_word_counts = {word: 0 for word in self.stopwords}
-        for word in words:
-            if word in self.stopwords:
-                func_word_counts[word] += 1
+        tokens = re.sub(r'[^\w\s]', '', text).split()
+        clean_tokens = [t for t in tokens if t not in self.stop_words]
         
-        # 5. Punctuation Density
-        punctuation_count = text.count('.') + text.count(',') + text.count(';')
-        punctuation_density = punctuation_count / len(words)
+        # 4 Core Features
+        sentence_length = float(len(tokens))
+        vocabulary_richness = float(len(set(clean_tokens)) / len(clean_tokens)) if clean_tokens else 0.0
+        punc_chars = [c for c in text if c in [',', ';', '?', '!', ':']]
+        punctuation_density = float(len(punc_chars) / len(tokens)) if tokens else 0.0
+        
+        formal_hits = sum(1 for verb in self.formal_verbs if verb in text)
+        connector_hits = sum(1 for conn in self.academic_connectors if conn in text)
+        linguistic_bias = float(formal_hits + connector_hits)
 
         return {
-            "avg_sentence_length": round(avg_sentence_len, 2),
-            "vocabulary_richness": round(vocab_richness, 4),
-            "function_word_freq": json.dumps(func_word_counts, ensure_ascii=False),
-            "punctuation_density": round(punctuation_density, 4)
+            "sentence_length": sentence_length,
+            "vocabulary_richness": vocabulary_richness,
+            "punctuation_density": punctuation_density,
+            "linguistic_bias": linguistic_bias
         }

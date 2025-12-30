@@ -9,3 +9,4 @@ def get_db_connection():
         database="sinhala_plagiarism_db",
         charset='utf8mb4'   # Critical for Sinhala font support
     )
+
