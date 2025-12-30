@@ -1,2 +1,0 @@
-Prediction: ORIGINAL / COMPLEX
-Confidence: 0.0%
