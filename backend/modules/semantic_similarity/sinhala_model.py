@@ -9,11 +9,17 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 
 _model = None
 
-def init_model(name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+def init_model(model_path: str):
     global _model
     if _model is None:
-        _model = SentenceTransformer(name)
+        if os.path.isdir(model_path):
+            print("✅ Loading fine-tuned Sinhala model")
+            _model = SentenceTransformer(model_path)
+        else:
+            print("⚠️ Loading base pretrained model")
+            _model = SentenceTransformer(model_path)
     return _model
+
 
 def _cache_key(text: str) -> str:
     h = hashlib.sha1(text.encode("utf-8")).hexdigest()

@@ -9,15 +9,15 @@ import hashlib
 # Text helpers (Sinhala)
 # -------------------------
 def normalize_sinhala(text: Optional[str]) -> str:
-    """Basic Sinhala normalization: remove ZERO-WIDTH chars and collapse whitespace."""
     if not text:
         return ""
-    t = str(text).strip()
-    # remove zero-width joiner/ non-joiner and similar invisible chars
+    t = str(text).lower()
     t = t.replace("\u200d", "").replace("\u200c", "")
-    # collapse multiple whitespace/newlines to single space
+    # keep Sinhala unicode range + spaces
+    t = re.sub(r"[^\u0D80-\u0DFF\s]", " ", t)
     t = re.sub(r"\s+", " ", t)
-    return t
+    return t.strip()
+
 
 def split_paragraphs(text: Optional[str]) -> List[str]:
     """Split text into paragraphs (two or more newlines) or fallback to whole text."""
