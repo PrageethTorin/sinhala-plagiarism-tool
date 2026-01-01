@@ -32,6 +32,7 @@ export default function NavBar({ sidebarOpen, setSidebarOpen }) {
         <a className="nav-profile" href="#/" onClick={() => setMenuOpen(false)}>Home</a>
         <a className="nav-profile" href="#/" onClick={() => setMenuOpen(false)}>My Profile</a>
 
+        {/* FIXED login link */}
         <a
           href="#/login"
           className="nav-login"
