@@ -334,20 +334,30 @@ async def web_corpus_check(request: SimilarityRequest):
 
 
 @router.post("/web-search-check")
-async def web_search_check(
-    text: str,
-    threshold: float = 0.5,
-    num_results: int = 5
-):
+async def web_search_check(request: SimilarityRequest):
     """
     Searches the live web (Google) for potential plagiarism sources
     and compares using the approved hybrid detection logic.
 
     Requires GOOGLE_API_KEY and CSE_ID environment variables.
+
+    Accepts same format as other endpoints:
+    {
+        "text_pair": {
+            "original": "text to search",
+            "suspicious": ""  (optional, not used for web search)
+        },
+        "threshold": 0.5
+    }
     """
     start_time = time.time()
 
-    if not text or not text.strip():
+    # Extract text from request (use original text for web search)
+    text = request.text_pair.original.strip()
+    threshold = request.threshold
+    num_results = 5  # Default number of results
+
+    if not text:
         raise HTTPException(status_code=400, detail="Text is required")
 
     if not WEB_SEARCH_AVAILABLE:
