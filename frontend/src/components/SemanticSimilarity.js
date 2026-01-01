@@ -402,17 +402,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                         </div>
                       </div>
 
-                      <div className="verdict-section">
-                        <div className={`verdict-badge ${result.is_plagiarized ? 'plagiarized' : 'original'}`}>
-                          {result.verdict}
-                        </div>
-                        <div className="confidence-meter">
-                          <div className="confidence-label">Confidence:</div>
-                          <div className="confidence-value">
-                            {(result.confidence * 100).toFixed(1)}%
-                          </div>
-                        </div>
-                      </div>
                     </div>
 
                     {/* Progress Bar */}
@@ -421,10 +410,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                         className="progress-fill"
                         style={{ width: `${result.similarity_score * 100}%` }}
                       ></div>
-                      <div className="threshold-indicator" style={{ left: `${threshold * 100}%` }}>
-                        <div className="threshold-line"></div>
-                        <div className="threshold-text">Threshold: {threshold.toFixed(2)}</div>
-                      </div>
                     </div>
 
                     {/* Component Scores */}
@@ -477,16 +462,10 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                     {/* Metadata */}
                     <div className="metadata-section">
                       {result.metadata && (
-                        <>
-                          <div className="metadata-item">
-                            <span className="metadata-label">Algorithm Used:</span>
-                            <span className="metadata-value">{result.metadata.algorithm_used}</span>
-                          </div>
-                          <div className="metadata-item">
-                            <span className="metadata-label">Threshold Applied:</span>
-                            <span className="metadata-value">{result.metadata.threshold_applied}</span>
-                          </div>
-                        </>
+                        <div className="metadata-item">
+                          <span className="metadata-label">Algorithm:</span>
+                          <span className="metadata-value">{result.metadata.algorithm_used}</span>
+                        </div>
                       )}
                       <div className="metadata-item">
                         <span className="metadata-label">Processing Time:</span>
