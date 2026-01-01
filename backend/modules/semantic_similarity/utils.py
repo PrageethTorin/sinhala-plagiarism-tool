@@ -5,9 +5,7 @@ import os
 import pickle
 import hashlib
 
-# -------------------------
-# Text helpers (Sinhala)
-# -------------------------
+
 def normalize_sinhala(text: Optional[str]) -> str:
     if not text:
         return ""
@@ -40,10 +38,10 @@ def split_sentences_simple(text: Optional[str]) -> List[str]:
     parts = [p.strip() for p in parts if p.strip()]
     return parts
 
-# -------------------------
+
 # Embedding cache utilities
-# -------------------------
-# Cache directory is located next to this utils.py (module folder)
+
+
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "embedding_cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
@@ -64,7 +62,7 @@ def save_embedding_cache(text: str, embedding) -> None:
         with open(fname, "wb") as f:
             pickle.dump(embedding, f)
     except Exception:
-        # don't crash on cache errors
+       
         return
 
 def load_embedding_cache(text: str):

@@ -1,186 +1,489 @@
-# backend/modules/semantic_similarity/routes.py
-from typing import Optional, List
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from pydantic import BaseModel
+"""
+API endpoints for plagiarism detection
+"""
+from fastapi import APIRouter, UploadFile, File, HTTPException
+import time
+import logging
+from typing import Dict, Optional
 
-# Local imports - these modules should exist in the same package
-from .engine import (
-    process_paragraph_similarity,
-    process_document_text,
-    process_doc_compare,
-    process_paragraph_web_check,
-)
-from .extractors import extract_text_from_bytes
-from .websearch import fetch_web_texts_for_document
-from .googledoc import fetch_google_doc_text_service
+from .schemas import SimilarityRequest, SimilarityResult, TextPair
+from .services import SimilarityDetector, FileHandler
+from .approved_hybrid import ApprovedHybridDetector
 
-router = APIRouter(tags=["Semantic Similarity"])
+# Optional imports for web services
+try:
+    from modules.semantic_similarity.corpus.web_corpus_service import WebCorpusSimilarityService
+    CORPUS_SERVICE_AVAILABLE = True
+except ImportError:
+    CORPUS_SERVICE_AVAILABLE = False
 
+try:
+    from .web.web_search_service import WebPlagiarismChecker
+    WEB_SEARCH_AVAILABLE = True
+except ImportError:
+    WEB_SEARCH_AVAILABLE = False
 
-# ----------------------------
-# Request models
-# ----------------------------
-class PairParagraph(BaseModel):
-    p1: str
-    p2: str
+router = APIRouter()
+logger = logging.getLogger(__name__)
 
-
-class UploadCompareReq(BaseModel):
-    doc_text: str
-    corpus: List[str] = []
-    top_k: int = 3
-
-
-class DocCompareReq(BaseModel):
-    doc_a: str
-    doc_b: str
-    top_k: int = 3
+# Initialize services
+similarity_detector = SimilarityDetector()
+file_handler = FileHandler()
 
 
-class ParagraphWebReq(BaseModel):
-    paragraph: str
-    top_k: int = 3
-    google_doc_url: Optional[str] = None
-    use_web_search: bool = True
+# STANDARD PLAGIARISM CHECK 
 
 
-# ----------------------------
-# Simple health
-# ----------------------------
-@router.get("/ping")
-def ping():
-    return {"status": "ok"}
+@router.post("/check-plagiarism", response_model=SimilarityResult)
+async def check_plagiarism(request: SimilarityRequest):
+    start_time = time.time()
+
+    try:
+        result = similarity_detector.calculate_similarity(
+            text1=request.text_pair.original,
+            text2=request.text_pair.suspicious,
+            algorithm=request.algorithm
+        )
+
+        is_plagiarized = result["similarity_score"] >= request.threshold
+
+        if result["similarity_score"] >= 0.9:
+            verdict = "Plagiarized"
+        elif result["similarity_score"] >= request.threshold:
+            verdict = "Suspected Plagiarism"
+        else:
+            verdict = "Original"
+
+        confidence = min(result["similarity_score"] * 1.2, 1.0)
+        processing_time = time.time() - start_time
+
+        return SimilarityResult(
+            similarity_score=result["similarity_score"],
+            is_plagiarized=is_plagiarized,
+            confidence=confidence,
+            verdict=verdict,
+            components=result["components"],
+            matches=result["matches"],
+            metadata={
+                "algorithm_used": request.algorithm,
+                "threshold_applied": request.threshold,
+                "text_length_original": len(request.text_pair.original),
+                "text_length_suspicious": len(request.text_pair.suspicious)
+            },
+            processing_time=processing_time
+        )
+
+    except Exception as e:
+        logger.error(f"Error in plagiarism check: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ----------------------------
-# Paragraph similarity (two paragraphs)
-# ----------------------------
-@router.post("/api/paragraph_similarity")
-def paragraph_similarity(payload: PairParagraph):
+#  HYBRID ENDPOINT 
+
+
+@router.post("/supervisor-hybrid")
+async def supervisor_hybrid_check(request: SimilarityRequest):
+    start_time = time.time()
+
+    try:
+        hybrid_detector = ApprovedHybridDetector()
+
+        result = hybrid_detector.detect(
+            request.text_pair.original,
+            request.text_pair.suspicious
+        )
+
+        # Use final_score for decisions
+        is_plagiarized = result["final_score"] >= request.threshold
+
+        if result["final_score"] >= 0.9:
+            verdict = "Plagiarized"
+        elif result["final_score"] >= request.threshold:
+            verdict = "Suspected Plagiarism"
+        else:
+            verdict = "Original"
+
+        # Confidence logic (clean & explainable)
+        if result["case_type"] != "difficult":
+            confidence = 0.9
+        else:
+            confidence = 0.7
+
+        processing_time = time.time() - start_time
+
+        components = {
+            "custom_score": result["custom_score"],
+            "final_score": result["final_score"]
+        }
+        if result["embedding_score"] is not None:
+            components["embedding_score"] = result["embedding_score"]
+
+        metadata = {
+            "method": result["method"],
+            "case_type": result["case_type"],
+            "threshold_applied": request.threshold,
+            "algorithm_used": "approved-hybrid",
+            "text_length_original": len(request.text_pair.original),
+            "text_length_suspicious": len(request.text_pair.suspicious)
+        }
+
+        return {
+            "success": True,
+            "similarity_score": result["final_score"],
+            "is_plagiarized": is_plagiarized,
+            "verdict": verdict,
+            "confidence": confidence,
+            "components": components,
+            "matches": [],
+            "metadata": metadata,
+            "processing_time": processing_time
+        }
+
+    except Exception as e:
+        logger.error(f"Hybrid detection error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# FILE-BASED ENDPOINTS
+
+
+@router.post("/check-file")
+async def check_file_plagiarism(
+    file1: UploadFile = File(...),
+    file2: UploadFile = File(...),
+    threshold: float = 0.7,
+    algorithm: str = "hybrid"
+):
+    try:
+        text1 = await file_handler.read_file(file1)
+        text2 = await file_handler.read_file(file2)
+
+        request = SimilarityRequest(
+            text_pair=TextPair(original=text1, suspicious=text2),
+            threshold=threshold,
+            algorithm=algorithm
+        )
+
+        return await check_plagiarism(request)
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/check-file-supervisor-hybrid")
+async def check_file_supervisor_hybrid(
+    file1: UploadFile = File(...),
+    file2: UploadFile = File(...),
+    threshold: float = 0.7
+):
+    try:
+        text1 = await file_handler.read_file(file1)
+        text2 = await file_handler.read_file(file2)
+
+        request = SimilarityRequest(
+            text_pair=TextPair(original=text1, suspicious=text2),
+            threshold=threshold,
+            algorithm="approved-hybrid"
+        )
+
+        return await supervisor_hybrid_check(request)
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# TEST ENDPOINT 
+
+
+@router.get("/test-hybrid")
+async def test_hybrid_endpoint():
+    try:
+        hybrid_detector = ApprovedHybridDetector()
+
+        test_cases = [
+            {
+                "name": "Easy Negative",
+                "text1": "මම ගෙදර යමි",
+                "text2": "ඔහු පාසලට යයි"
+            },
+            {
+                "name": "Easy Positive",
+                "text1": "සිංහල භාෂාව ලංකාවේ ප්රධාන භාෂාවයි",
+                "text2": "සිංහල භාෂාව ලංකාවේ ප්රධාන භාෂාවයි"
+            },
+            {
+                "name": "Difficult Case",
+                "text1": "ළමයා රෝහල් ගත කරන ලදී",
+                "text2": "දරුවා රෝහලට ඇතුළත් කරන ලදී"
+            }
+        ]
+
+        results = []
+        for test in test_cases:
+            result = hybrid_detector.detect(test["text1"], test["text2"])
+
+            results.append({
+                "test_name": test["name"],
+                "similarity_score": result["final_score"],
+                "case_type": result["case_type"],
+                "method": result["method"],
+                "custom_score": result["custom_score"],
+                "embedding_score": result["embedding_score"]
+            })
+
+        return {"test_results": results}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# MISC
+
+
+@router.get("/health")
+async def health():
+    return {"status": "healthy", "timestamp": time.time()}
+
+
+@router.get("/performance-stats")
+async def get_performance_stats():
+    """Get cache and performance statistics"""
+    try:
+        from .performance import get_performance_stats, get_cache_stats
+        return {
+            "success": True,
+            "stats": get_performance_stats()
+        }
+    except ImportError:
+        return {
+            "success": True,
+            "stats": {
+                "cache_stats": "Performance module not available",
+                "timing_stats": {}
+            }
+        }
+
+@router.get("/algorithms")
+async def get_algorithms():
+    return {
+        "algorithms": [
+            {"id": "semantic", "name": "Semantic Similarity"},
+            {"id": "lexical", "name": "Lexical Similarity"},
+            {"id": "hybrid", "name": "Hybrid"},
+            {"id": "approved-hybrid", "name": "Approved Hybrid (Fine-Tuned)"}
+        ],
+        "endpoints": [
+            {"path": "/check-plagiarism", "method": "POST", "description": "Standard plagiarism check"},
+            {"path": "/supervisor-hybrid", "method": "POST", "description": "Approved hybrid detection"},
+            {"path": "/check-file", "method": "POST", "description": "File-based detection"},
+            {"path": "/check-file-supervisor-hybrid", "method": "POST", "description": "File-based hybrid"},
+            {"path": "/web-corpus-check", "method": "POST", "description": "FAISS corpus similarity"},
+            {"path": "/web-search-check", "method": "POST", "description": "Live Google web search"},
+            {"path": "/comprehensive-check", "method": "POST", "description": "Combined check (direct + corpus + web)"},
+            {"path": "/test-hybrid", "method": "GET", "description": "Test with predefined cases"},
+            {"path": "/health", "method": "GET", "description": "Health check"},
+            {"path": "/performance-stats", "method": "GET", "description": "Cache and performance stats"},
+            {"path": "/algorithms", "method": "GET", "description": "List algorithms and endpoints"}
+        ],
+        "web_search_configured": WEB_SEARCH_AVAILABLE,
+        "corpus_service_available": CORPUS_SERVICE_AVAILABLE
+    }
+
+
+
+@router.post("/web-corpus-check")
+async def web_corpus_check(request: SimilarityRequest):
     """
-    Compare two paragraphs (p1 vs p2) and return similarity metrics.
-    Delegates work to engine.process_paragraph_similarity.
+    Compares user text against a FAISS-indexed Sinhala web corpus
+    using the SAME approved hybrid detection logic.
     """
-    return process_paragraph_similarity(payload.p1, payload.p2)
+
+    if not request.text_pair.original.strip():
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    if not CORPUS_SERVICE_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Web corpus service not available. Check corpus configuration."
+        )
+
+    try:
+        service = WebCorpusSimilarityService()
+        matches = service.check(request.text_pair.original)
+
+        # Calculate summary statistics for frontend
+        if matches:
+            avg_similarity = sum(m.get("final_score", 0) for m in matches) / len(matches)
+        else:
+            avg_similarity = 0.0
+
+        return {
+            "success": True,
+            "mode": "web_corpus",
+            "input_text": request.text_pair.original,
+            "matches": matches,
+            "summary": {
+                "average_similarity": round(avg_similarity, 4),
+                "sources_checked": len(matches),
+                "matches_found": len([m for m in matches if m.get("final_score", 0) >= 0.5])
+            }
+        }
+    except Exception as e:
+        logger.error(f"Web corpus check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ----------------------------
-# Upload JSON doc_text -> compare against provided corpus
-# ----------------------------
-@router.post("/api/upload_and_compare")
-def upload_and_compare(payload: UploadCompareReq):
-    """
-    Accepts raw document text in JSON body and an optional corpus list.
-    Returns paragraph-level matches and overall document score.
-    """
-    return process_document_text(
-        payload.doc_text or "",
-        corpus=payload.corpus or [],
-        top_k=payload.top_k or 3,
-    )
-
-
-# ----------------------------
-# Document vs Document comparison (sentence-level)
-# ----------------------------
-@router.post("/api/doc_compare")
-def doc_compare(payload: DocCompareReq):
-    """
-    Compare two documents (strings) and return matching sentence pairs.
-    """
-    return process_doc_compare(
-        payload.doc_a or "",
-        payload.doc_b or "",
-        top_k=payload.top_k or 3,
-    )
-
-
-# ----------------------------
-# File upload endpoint: extract text, optional web search + Google Doc, then compare
-# ----------------------------
-@router.post("/api/upload_file_compare")
-async def upload_file_compare(
-    file: UploadFile = File(...),
-    top_k: int = Form(3),
-    google_doc_url: Optional[str] = Form(None),
-    # frontend sends "1" or "0" as string; accept either string or boolean
-    use_web_search: Optional[str] = Form("1"),
+@router.post("/web-search-check")
+async def web_search_check(
+    text: str,
+    threshold: float = 0.5,
+    num_results: int = 5
 ):
     """
-    Upload a file (.txt, .pdf, .docx). Server extracts text, optionally runs web search
-    and Google Doc fetch, then uses process_document_text to compare.
-    Returns {"source_count": N, "result": {...}}
+    Searches the live web (Google) for potential plagiarism sources
+    and compares using the approved hybrid detection logic.
+
+    Requires GOOGLE_API_KEY and CSE_ID environment variables.
     """
-    # Read file bytes
-    content = await file.read()
+    start_time = time.time()
+
+    if not text or not text.strip():
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    if not WEB_SEARCH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Web search service not available"
+        )
+
     try:
-        text = extract_text_from_bytes(file.filename or "", content)
-    except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        checker = WebPlagiarismChecker()
+
+        if not checker.google_search.is_configured:
+            return {
+                "success": False,
+                "error": "Google API not configured",
+                "message": "Set GOOGLE_API_KEY and CSE_ID environment variables",
+                "setup_instructions": {
+                    "step1": "Go to https://console.cloud.google.com/",
+                    "step2": "Create a project and enable Custom Search API",
+                    "step3": "Create credentials (API key)",
+                    "step4": "Go to https://programmablesearchengine.google.com/",
+                    "step5": "Create a search engine and get the ID",
+                    "step6": "Set environment variables: GOOGLE_API_KEY and CSE_ID"
+                }
+            }
+
+        result = checker.check_plagiarism(
+            text=text,
+            threshold=threshold,
+            num_web_results=min(num_results, 10)
+        )
+
+        result["processing_time"] = time.time() - start_time
+        return result
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Text extraction failed: {e}")
+        logger.error(f"Web search check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-    corpus: List[str] = []
 
-    # Determine whether to run web search (frontend may send "1"/"0" or "true"/"false")
-    run_web = True
-    if isinstance(use_web_search, str):
-        if use_web_search.strip() in ("0", "false", "False", ""):
-            run_web = False
+@router.post("/comprehensive-check")
+async def comprehensive_plagiarism_check(request: SimilarityRequest):
+    """
+    Comprehensive plagiarism check combining:
+    1. Direct text comparison (if suspicious text provided)
+    2. FAISS corpus search (local)
+    3. Live web search (Google API)
 
-    if run_web:
+    Returns combined results from all sources.
+    """
+    start_time = time.time()
+
+    if not request.text_pair.original.strip():
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    results = {
+        "success": True,
+        "input_text": request.text_pair.original[:200] + "...",
+        "threshold": request.threshold,
+        "direct_comparison": None,
+        "corpus_matches": [],
+        "web_matches": [],
+        "overall_verdict": "Original",
+        "max_similarity": 0.0
+    }
+
+    hybrid_detector = ApprovedHybridDetector()
+    max_score = 0.0
+
+    # 1. Direct comparison (if suspicious text provided)
+    if request.text_pair.suspicious and request.text_pair.suspicious.strip():
         try:
-            web_texts = fetch_web_texts_for_document(text)
-            if web_texts:
-                # extend corpus with web page texts
-                corpus.extend(web_texts)
+            direct_result = hybrid_detector.detect(
+                request.text_pair.original,
+                request.text_pair.suspicious
+            )
+            results["direct_comparison"] = {
+                "similarity_score": direct_result["final_score"],
+                "case_type": direct_result["case_type"],
+                "method": direct_result["method"],
+                "custom_score": direct_result["custom_score"],
+                "embedding_score": direct_result.get("embedding_score")
+            }
+            max_score = max(max_score, direct_result["final_score"])
         except Exception as e:
-            # don't fail entire request for scraping errors; log and continue
-            print("fetch_web_texts_for_document error:", e)
+            logger.error(f"Direct comparison error: {e}")
+            results["direct_comparison"] = {"error": str(e)}
 
-    # If user supplied a Google Doc URL/ID, try to fetch (this requires service account configured)
-    if google_doc_url:
-        doc_id = None
+    # 2. FAISS corpus search (if available)
+    if CORPUS_SERVICE_AVAILABLE:
         try:
-            if "/d/" in google_doc_url:
-                doc_id = google_doc_url.split("/d/")[1].split("/")[0]
+            corpus_service = WebCorpusSimilarityService()
+            corpus_matches = corpus_service.check(request.text_pair.original)
+            results["corpus_matches"] = corpus_matches[:5]
+
+            for match in corpus_matches:
+                max_score = max(max_score, match.get("final_score", 0))
+        except Exception as e:
+            logger.warning(f"Corpus search error: {e}")
+            results["corpus_matches"] = [{"error": str(e)}]
+
+    # 3. Live web search (if available and configured)
+    if WEB_SEARCH_AVAILABLE:
+        try:
+            checker = WebPlagiarismChecker()
+            if checker.google_search.is_configured:
+                web_result = checker.check_plagiarism(
+                    request.text_pair.original,
+                    threshold=request.threshold,
+                    num_web_results=5
+                )
+                results["web_matches"] = web_result.get("matches", [])[:5]
+                results["web_search_enabled"] = True
+
+                for match in web_result.get("matches", []):
+                    max_score = max(max_score, match.get("similarity_score", 0))
             else:
-                doc_id = google_doc_url.strip()
-        except Exception:
-            doc_id = None
+                results["web_search_enabled"] = False
+                results["web_matches"] = [{"note": "Google API not configured"}]
+        except Exception as e:
+            logger.warning(f"Web search error: {e}")
+            results["web_matches"] = [{"error": str(e)}]
 
-        if doc_id:
-            try:
-                gtext = fetch_google_doc_text_service(doc_id)
-                if gtext:
-                    corpus.append(gtext)
-            except Exception as e:
-                print("fetch_google_doc_text_service error:", e)
+    # Determine overall verdict
+    results["max_similarity"] = round(max_score, 4)
+    if max_score >= 0.9:
+        results["overall_verdict"] = "High Plagiarism Risk"
+    elif max_score >= 0.7:
+        results["overall_verdict"] = "Moderate Plagiarism Risk"
+    elif max_score >= request.threshold:
+        results["overall_verdict"] = "Low Plagiarism Risk"
+    else:
+        results["overall_verdict"] = "Original"
 
-    # If no corpus found at all, return a result indicating that
-    if not corpus:
-        # still run processing to produce paragraph split and zero matches
-        result = process_document_text(text, corpus=[], top_k=top_k)
-        return {"source_count": 0, "result": result, "note": "No web/doc sources found; compared only to empty corpus."}
+    results["processing_time"] = round(time.time() - start_time, 2)
 
-    # Run core processor
-    result = process_document_text(text, corpus=corpus, top_k=top_k)
-    return {"source_count": len(corpus), "result": result}
+    return results
+  
 
-
-# ----------------------------
-# Paragraph -> Web/Docs quick check (single paragraph)
-# ----------------------------
-@router.post("/api/paragraph_web_check")
-def paragraph_web_check(payload: ParagraphWebReq):
-    """
-    Given a single paragraph, build a small corpus from web search and/or a Google Doc,
-    and return the paragraph matches (top_k).
-    Delegates to engine.process_paragraph_web_check which should implement the comparison.
-    """
-    return process_paragraph_web_check(
-        payload.paragraph,
-        top_k=payload.top_k,
-        google_doc_url=payload.google_doc_url,
-        use_web_search=payload.use_web_search,
-    )
