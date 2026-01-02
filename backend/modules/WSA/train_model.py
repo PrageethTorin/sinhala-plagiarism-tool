@@ -1,104 +1,46 @@
-# train_model.py
-import pandas as pd
-import joblib
-from sklearn.ensemble import RandomForestClassifier
-from extractor import StyleExtractor
-from preprocessor import SinhalaPreprocessor
-
-def train():
-    # 1. Load your dataset
-    try:
-        data = pd.read_csv('training_data.csv')
-    except FileNotFoundError:
-        print("❌ Error: training_data.csv not found!")
-        return
-
-    pre = SinhalaPreprocessor()
-    ext = StyleExtractor()
-    
-    X = [] # Features
-    y = [] # Labels
-
-    print("📊 Extracting features from Sinhala text...")
-    
-    for index, row in data.iterrows():
-        sentences = pre.split_into_sentences(row['text'])
-        features = ext.get_all_features(row['text'], sentences)
-        
-        # Convert dictionary to a numerical list (Vector)
-        vector = [
-            features['avg_sentence_length'],
-            features['vocabulary_richness'],
-            features['punctuation_density']
-        ]
-        X.append(vector)
-        y.append(row['label'])
-
-    # 2. Train the Model
-    print("🤖 Training the Random Forest model...")
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X, y)
-
-    # 3. Save the Model
-    joblib.dump(model, 'wsa_model.pkl')
-    print("✅ Model saved successfully as 'wsa_model.pkl'!")# train_model.py
 import pandas as pd
 import joblib
 import os
-from sklearn.ensemble import RandomForestClassifier
-from extractor import StyleExtractor
+from sklearn.feature_extraction.text import TfidfVectorizer
 from preprocessor import SinhalaPreprocessor
 
 def train():
-    # 1. Load the training data CSV
-    # Ensure this file contains the Sinhala text samples and labels (0, 1, 2, 3)
-    try:
-        data = pd.read_csv('training_data.csv')
-    except FileNotFoundError:
-        print("❌ Error: training_data.csv not found in the current directory.")
+    print("🚀 වාර්තා 1000+ ක දත්ත සමුදාය සමඟ පුහුණු කිරීම ආරම්භ වේ...")
+    
+    # වර්තමාන ෆෝල්ඩරයේ ඇති CSV ගොනුව සොයා ගැනීම
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(current_dir, 'training_data.csv')
+    
+    if not os.path.exists(csv_path):
+        print(f"❌ දෝෂයකි: {csv_path} ගොනුව හමු නොවීය!")
         return
 
-    # Initialize your research components
+    df = pd.read_csv(csv_path)
     pre = SinhalaPreprocessor()
-    ext = StyleExtractor()
+    processed_texts = []
     
-    X = [] # Feature vectors
-    y = [] # Target labels
-
-    print("📊 Extracting features (including Function Word Analysis)...")
+    print("🧹 දත්ත පිරිසිදු කිරීම සහ විශේෂාංග වෙන් කර ගැනීම සිදු වේ...")
     
-    for index, row in data.iterrows():
-        # Clean and split the text into sentences
-        sentences = pre.split_into_sentences(row['text'])
-        
-        # Extract the 4 stylometric features
-        features = ext.get_all_features(row['text'], sentences)
-        
-        # Build the vector: Model now expects 4 dimensions
-        vector = [
-            features['avg_sentence_length'],
-            features['vocabulary_richness'],
-            features['punctuation_density'],
-            features['function_word_freq']  # The new standard-level feature
-        ]
-        
-        X.append(vector)
-        y.append(row['label'])
+    for index, row in df.iterrows():
+        # එක් එක් පේළිය පිරිසිදු කිරීම
+        clean_text = pre.preprocess_sinhala(row['text'])
+        if clean_text:
+            processed_texts.append(clean_text)
 
-    # 2. Train the Machine Learning Model
-    print(f"🤖 Training Random Forest Classifier on {len(X)} samples...")
-    # Random Forest is ideal for stylometry as it handles non-linear feature relationships well
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X, y)
-
-    # 3. Save the Model as a binary file
-    model_filename = 'wsa_model.pkl'
-    joblib.dump(model, model_filename)
+    # 1. Vectorizer එක සකස් කිරීම
+    vectorizer = TfidfVectorizer()
     
-    print(f"✅ Model trained with 4 features and saved as '{model_filename}'!")
-
-if __name__ == "__main__":
-    train()
+    # 2. දත්ත පුහුණු කිරීම (Fitting the model)
+    tfidf_matrix = vectorizer.fit_transform(processed_texts)
+    
+    # 3. නව .pkl ගොනු ලෙස ගබඩා කිරීම
+    joblib.dump(vectorizer, os.path.join(current_dir, 'vectorizer.pkl'))
+    joblib.dump(tfidf_matrix, os.path.join(current_dir, 'tfidf_matrix.pkl'))
+    
+    print(f"==================================================")
+    print(f"🎉 සාර්ථකයි: වාර්තා {len(processed_texts)} ක් ඇසුරෙන් පද්ධතිය පුහුණු කළා.")
+    print(f"💾 vectorizer.pkl සහ tfidf_matrix.pkl යාවත්කාලීන විය.")
+    print(f"==================================================")
 
 if __name__ == "__main__":
     train()

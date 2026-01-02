@@ -3,8 +3,7 @@ import re
 import numpy as np
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
-from .preprocessor import SinhalaPreprocessor
-
+from preprocessor import SinhalaPreprocessor
 class WSAAnalyzer:
     def __init__(self):
         self.preprocessor = SinhalaPreprocessor()

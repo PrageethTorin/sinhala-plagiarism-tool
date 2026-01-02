@@ -1,52 +1,36 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from modules.WSA import WSAAnalyzer
+import sys
+import os
 
-# Initialize FastAPI app
-app = FastAPI(title="Sinhala Plagiarism & Writing Style Analysis API")
+# Get the absolute path to the WSA module folder
+wsa_path = os.path.join(os.path.dirname(__file__), "modules", "WSA")
+sys.path.append(wsa_path)
 
-# Initialize your custom research engine
-# This will load your vectorizer.pkl and tfidf_matrix.pkl upon startup
-wsa_tool = WSAAnalyzer()
+# Now import the analyzer after the path is set
+try:
+    from wsa_engine import WSAAnalyzer
+    analyzer = WSAAnalyzer()
+    print("✅ WSA Engine and 1000+ record models loaded successfully.")
+except Exception as e:
+    print(f"❌ Initialization Error: {e}")
 
-class AnalysisRequest(BaseModel):
+app = FastAPI()
+
+class TextRequest(BaseModel):
     text: str
 
-@app.get("/")
-async def root():
-    return {"message": "Sinhala Plagiarism Detection API is running"}
-
 @app.post("/api/check-wsa")
-async def check_wsa(request: AnalysisRequest):
-    """
-    Endpoint for Writing Style Analysis using Hybrid Scoring.
-    Detects anomalies based on Sentence Length and Lexical Richness (TTR).
-    """
-    if not request.text or len(request.text.strip()) == 0:
-        raise HTTPException(status_code=400, detail="Text input is empty. Please provide a paragraph.")
-
+async def check_style(request: TextRequest):
     try:
-        # 1. Execute the Hybrid Analysis from the engine
-        result = wsa_tool.check_text(request.text)
-        
-        # Extract the ratio_data dictionary calculated in wsa_engine.py
-        r_info = result["ratio_data"]
-        
-        # 2. Return the full statistical breakdown for the research component
+        results = analyzer.check_text(request.text)
         return {
-            "external_plagiarism": result["similarity_score"],
-            "style_change_ratio": r_info["style_change_ratio"],
-            "flagged_count": r_info["flagged_count"],
-            "total_count": r_info["total_count"],
-            "sentence_map": r_info["details"],  # This contains ID, Length, TTR, and Reason
-            "verdict": "Suspicious" if r_info["style_change_ratio"] > 15 else "Clean"
+            "style_change_ratio": results['ratio_data']['style_change_ratio'],
+            "sentence_map": results['ratio_data']['details']
         }
-
-    except KeyError as ke:
-        print(f"❌ Key Error in Main: {ke}")
-        raise HTTPException(status_code=500, detail=f"Data mapping error: {str(ke)}")
     except Exception as e:
-        print(f"❌ API Backend Crash: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# To run this: uvicorn main:app --reload
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
