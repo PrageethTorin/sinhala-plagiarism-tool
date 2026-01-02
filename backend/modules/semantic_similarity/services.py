@@ -359,25 +359,68 @@ class FileHandler:
 
 # Fine-Tuned Transformer Embedding Service (XLM-R)
 
+# HuggingFace Hub configuration
+HUGGINGFACE_REPO_ID = "sandalidahanayake/sinhala-plagiarism-model"
 
+def download_model_from_huggingface(model_path: str, repo_id: str = HUGGINGFACE_REPO_ID) -> bool:
+    """
+    Download the fine-tuned model from HuggingFace Hub if not exists locally.
+    Returns True if model is ready, False if download failed.
+    """
+    if os.path.exists(model_path) and os.path.exists(os.path.join(model_path, "config.json")):
+        return True  # Model already exists
 
+    try:
+        from huggingface_hub import snapshot_download
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.info(f"Downloading model from HuggingFace: {repo_id}")
+        print(f"[INFO] Model not found locally. Downloading from HuggingFace: {repo_id}")
+        print("[INFO] This may take 2-3 minutes on first run...")
+
+        snapshot_download(
+            repo_id=repo_id,
+            local_dir=model_path,
+            local_dir_use_symlinks=False
+        )
+
+        logger.info("Model downloaded successfully!")
+        print("[INFO] Model downloaded successfully!")
+        return True
+
+    except ImportError:
+        print("[WARNING] huggingface_hub not installed. Run: pip install huggingface_hub")
+        return False
+    except Exception as e:
+        print(f"[ERROR] Failed to download model: {e}")
+        print("[INFO] Please ensure the model exists at HuggingFace or provide it locally.")
+        return False
 
 
 class FineTunedEmbeddingService:
     """
     Uses the fine-tuned XLM-R model to compute semantic similarity
     for difficult cases.
+
+    Model is automatically downloaded from HuggingFace Hub if not found locally.
     """
 
     def __init__(self):
         base_dir = os.path.dirname(__file__)
         model_path = os.path.join(base_dir, "sinhala_fine_tuned_model")
 
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(
-                "Fine-tuned Sinhala model not found. "
-                "Please run fine_tune_sinhala.py first."
-            )
+        # Try to download from HuggingFace if not exists
+        if not os.path.exists(model_path) or not os.path.exists(os.path.join(model_path, "config.json")):
+            success = download_model_from_huggingface(model_path)
+            if not success:
+                raise FileNotFoundError(
+                    "Fine-tuned Sinhala model not found and could not be downloaded. "
+                    "Options:\n"
+                    "  1. Run fine_tune_sinhala.py to train locally\n"
+                    "  2. Ensure huggingface_hub is installed: pip install huggingface_hub\n"
+                    f"  3. Check if model exists at: https://huggingface.co/{HUGGINGFACE_REPO_ID}"
+                )
 
         self.model = SentenceTransformer(model_path)
 

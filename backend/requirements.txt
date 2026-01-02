@@ -12,6 +12,7 @@ datasets>=2.14.0
 sentence-transformers>=2.2.0
 torch>=2.0.0
 transformers>=4.30.0
+huggingface_hub>=0.20.0
 
 # Vector Search & Similarity
 faiss-cpu>=1.7.4

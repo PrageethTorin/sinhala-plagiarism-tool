@@ -1,7 +1,7 @@
 @echo off
-echo =========================================
+echo 
 echo Sinhala Plagiarism Detection - MySQL Setup
-echo =========================================
+echo 
 echo.
 
 REM Check if MySQL is installed

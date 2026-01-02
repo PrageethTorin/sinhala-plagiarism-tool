@@ -1,8 +1,5 @@
--- =====================================================
--- Sinhala Plagiarism Detection Tool - Database Schema
--- =====================================================
 -- Run: mysql -u root -p < setup_database.sql
--- =====================================================
+
 
 -- Create database with Sinhala/Unicode support
 CREATE DATABASE IF NOT EXISTS sinhala_plagiarism_db
