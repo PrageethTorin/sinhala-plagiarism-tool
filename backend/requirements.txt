@@ -27,4 +27,4 @@ python-docx>=0.8.11
 python-dotenv>=1.0.0
 
 # Database
-# mysql-connector-python>=8.0.0  # Optional: uncomment if using MySQL
+mysql-connector-python>=8.0.0

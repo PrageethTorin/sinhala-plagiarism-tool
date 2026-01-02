@@ -318,26 +318,7 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                       </select>
                     </div>
 
-                    <div className="control-group">
-                      <label className="control-label">
-                        Threshold: <span className="threshold-value">{threshold.toFixed(2)}</span>
-                      </label>
-                      <input
-                        type="range"
-                        className="threshold-slider"
-                        min="0.1"
-                        max="0.95"
-                        step="0.05"
-                        value={threshold}
-                        onChange={(e) => setThreshold(parseFloat(e.target.value))}
-                      />
-                      <div className="slider-labels">
-                        <span>0.1</span>
-                        <span>0.5</span>
-                        <span>0.95</span>
-                      </div>
-                    </div>
-
+                
                     <div className="control-group">
                       <label className="control-label">Options:</label>
                       <div className="checkbox-group">

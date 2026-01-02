@@ -1,7 +1,7 @@
 """
 API endpoints for plagiarism detection
 """
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 import time
 import logging
 from typing import Dict, Optional
@@ -22,6 +22,13 @@ try:
     WEB_SEARCH_AVAILABLE = True
 except ImportError:
     WEB_SEARCH_AVAILABLE = False
+
+# Optional database import
+try:
+    from database.db_config import save_check, get_history, get_statistics, db_health_check
+    DB_AVAILABLE = True
+except ImportError:
+    DB_AVAILABLE = False
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -127,7 +134,7 @@ async def supervisor_hybrid_check(request: SimilarityRequest):
             "text_length_suspicious": len(request.text_pair.suspicious)
         }
 
-        return {
+        response = {
             "success": True,
             "similarity_score": result["final_score"],
             "is_plagiarized": is_plagiarized,
@@ -138,6 +145,26 @@ async def supervisor_hybrid_check(request: SimilarityRequest):
             "metadata": metadata,
             "processing_time": processing_time
         }
+
+        # Save to database if available
+        if DB_AVAILABLE:
+            try:
+                save_check(
+                    check_type="direct",
+                    original_text=request.text_pair.original,
+                    suspicious_text=request.text_pair.suspicious,
+                    similarity_score=result["final_score"],
+                    is_plagiarized=is_plagiarized,
+                    algorithm_used="approved-hybrid",
+                    threshold_applied=request.threshold,
+                    processing_time=processing_time,
+                    components=components,
+                    metadata=metadata
+                )
+            except Exception as db_err:
+                logger.warning(f"Failed to save to database: {db_err}")
+
+        return response
 
     except Exception as e:
         logger.error(f"Hybrid detection error: {str(e)}")
@@ -494,6 +521,108 @@ async def comprehensive_plagiarism_check(request: SimilarityRequest):
 
     results["processing_time"] = round(time.time() - start_time, 2)
 
-    return results
-  
+    # Save to database if available
+    if DB_AVAILABLE:
+        try:
+            save_check(
+                check_type="comprehensive",
+                original_text=request.text_pair.original,
+                suspicious_text=request.text_pair.suspicious,
+                similarity_score=max_score,
+                is_plagiarized=max_score >= request.threshold,
+                algorithm_used="comprehensive",
+                threshold_applied=request.threshold,
+                processing_time=results["processing_time"],
+                components={"direct": results.get("direct_comparison"), "corpus": len(results.get("corpus_matches", []))},
+                metadata={"verdict": results["overall_verdict"]}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to save check to database: {e}")
 
+    return results
+
+
+# DATABASE ENDPOINTS
+
+
+@router.get("/history")
+async def get_check_history(
+    limit: int = Query(50, ge=1, le=200, description="Number of records to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    check_type: Optional[str] = Query(None, description="Filter by check type")
+):
+    """
+    Get plagiarism check history from database.
+
+    Returns recent plagiarism checks with their results.
+    Supports pagination with limit and offset.
+    """
+    if not DB_AVAILABLE:
+        return {
+            "success": False,
+            "error": "Database not configured",
+            "message": "MySQL database is not available. History feature requires database setup."
+        }
+
+    try:
+        history = get_history(limit=limit, offset=offset, check_type=check_type)
+        return {
+            "success": True,
+            "count": len(history),
+            "limit": limit,
+            "offset": offset,
+            "history": history
+        }
+    except Exception as e:
+        logger.error(f"Failed to get history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/statistics")
+async def get_usage_statistics(
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze")
+):
+    """
+    Get plagiarism detection usage statistics.
+
+    Returns:
+    - Total checks in period
+    - Plagiarized vs original counts
+    - Average similarity scores
+    - Checks by type breakdown
+    """
+    if not DB_AVAILABLE:
+        return {
+            "success": False,
+            "error": "Database not configured",
+            "message": "MySQL database is not available. Statistics feature requires database setup."
+        }
+
+    try:
+        stats = get_statistics(days=days)
+        return {
+            "success": True,
+            "period_days": days,
+            "statistics": stats
+        }
+    except Exception as e:
+        logger.error(f"Failed to get statistics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/db-health")
+async def database_health():
+    """Check database connectivity"""
+    if not DB_AVAILABLE:
+        return {
+            "status": "not_configured",
+            "message": "Database module not available"
+        }
+
+    try:
+        return db_health_check()
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
