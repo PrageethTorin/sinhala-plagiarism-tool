@@ -1,7 +1,8 @@
 import os
 import joblib
 from sklearn.metrics.pairwise import cosine_similarity
-from modules.web_scraper import get_internet_resources, scrape_url_content, clean_sinhala_text
+# FIXED: Changed from 'from .wsa_web_scraper' to direct import
+from wsa_web_scraper import get_internet_resources, scrape_url_content, clean_sinhala_text
 
 class WSAAnalyzer:
     def __init__(self):
@@ -10,6 +11,7 @@ class WSAAnalyzer:
 
     async def check_text(self, input_text):
         clean_input = clean_sinhala_text(input_text)
+        # Search for top 7 sources
         links = await get_internet_resources(clean_input[:150], num_results=7)
         
         best_url = "No source found"
@@ -20,7 +22,7 @@ class WSAAnalyzer:
         for url in links:
             web_text = await scrape_url_content(url)
             if web_text:
-                # Force 100% similarity if direct containment is detected
+                # Direct match check for 100% similarity
                 if clean_input in web_text or web_text in clean_input:
                     max_sim, best_url = 1.0, url
                     break 
