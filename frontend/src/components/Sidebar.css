@@ -1,18 +1,26 @@
 .sidebar-wrap {
   width: 260px;
-  background: linear-gradient(180deg,#281f36 0%, #3b2f4a 100%);
-  padding: 32px 20px;
-  min-height: calc(100vh - 72px);
-  position: fixed;
-  left: 0;
-  top: 72px; /* sits below the navbar */
-  z-index: 40;
-  box-sizing: border-box;
+  background: linear-gradient(135deg, #0f0a1a 0%, #1a0f2e 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 30px 20px;
   display: flex;
   flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 72px;
+  height: calc(100vh - 72px);
+  overflow-y: auto;
+  z-index: 100;
 }
 
-.sidebar-nav { display:flex; flex-direction:column; gap:18px; }
+.sidebar-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
 
 .sidebar-logo .logo-dots {
   display: flex;
@@ -81,27 +89,100 @@
   padding: 12px 14px;
   border-radius: 8px;
   text-decoration: none;
-  box-shadow: 0 8px 18px rgba(0,0,0,0.18);
-  color: rgba(255,255,255,0.9);
-  background: rgba(255,255,255,0.02);
-  transition: background 0.18s ease, transform 0.18s ease;
+  color: #b0b0b0;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
 }
 
-.sidebar-item:hover { transform: translateY(-3px); background: rgba(255,255,255,0.03); }
+.sidebar-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #d4c5f9;
+}
 
-.sidebar-active { background: rgba(167,124,255,0.14); }
+.sidebar-item.sidebar-active {
+  background-color: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.3);
+  color: #e0aaff;
+}
 
-/* Responsive behaviour: collapse sidebar into a top stacked block on small screens */
-@media (max-width: 900px) {
+.sidebar-item.sidebar-active .sidebar-icon {
+  color: #a855f7;
+}
+
+.sidebar-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.sidebar-footer {
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.05);
+  margin-bottom: 16px;
+}
+
+.sidebar-credit {
+  font-size: 11px;
+  color: #707070;
+  text-align: center;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Scrollbar styling */
+.sidebar-wrap::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-wrap::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.sidebar-wrap::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 1024px) {
   .sidebar-wrap {
-    position: relative;
-    left: 0;
+    width: 240px;
+    padding: 24px 16px;
+  }
+
+  .sidebar-item {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar-wrap {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
     top: 0;
-    width: 100%;
-    min-height: auto;
-    padding: 16px 12px;
-    display: block;
-    z-index: 20;
+    height: 100vh;
+    z-index: 1000;
+  }
+
+  .sidebar-wrap.open {
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar-wrap {
+    width: 200px;
   }
 
   /* Make nav items horizontal for small screens */
