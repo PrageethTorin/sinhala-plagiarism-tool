@@ -1,17 +1,3 @@
-"""
-Comprehensive Evaluation Metrics for Sinhala Semantic Similarity
-Includes all metrics required for research evaluation
-
-Metrics:
-- Precision, Recall, F1 Score
-- ROC-AUC
-- Precision-Recall Curve
-- Confusion Matrix
-- Mean Squared Error (MSE)
-- Pearson Correlation
-- Spearman Correlation
-"""
-
 import numpy as np
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
