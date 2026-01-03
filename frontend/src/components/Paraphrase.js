@@ -34,7 +34,13 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
     setLoading(false);
   };
 
-  const hasPlagiarism = reports.some(r => r.overall_paraphrase_percentage > 0);
+  // LOGIC: Filter for matches > 0% and then find the one with the HIGHEST percentage
+  const matches = reports.filter(r => r.overall_paraphrase_percentage > 0);
+  const topMatch = matches.length > 0 
+    ? matches.reduce((prev, current) => (prev.overall_paraphrase_percentage > current.overall_paraphrase_percentage) ? prev : current) 
+    : null;
+
+  const hasPlagiarism = topMatch !== null;
 
   return (
     <div className="par-wrap">
@@ -66,59 +72,64 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
             </div>
           </div>
 
-          {/* CASE 1: Display only the websites where plagiarism was detected */}
-          {reports.filter(r => r.overall_paraphrase_percentage > 0).map((report, index) => (
-            <div key={index} className="par-result" style={{ display: 'block', marginBottom: '20px', padding: '20px', borderLeft: '5px solid #ff4d4f' }}>
+          {/* CASE 1: Display ONLY the Highest Detection Website */}
+          {topMatch && (
+            <div className="par-result" style={{ display: 'block', marginBottom: '20px', padding: '20px', borderLeft: '5px solid #ff4d4f' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <a href={report.url} target="_blank" rel="noreferrer" style={{ color: '#52c41a', fontWeight: 'bold' }}>
-                  Source: {report.url.substring(0, 50)}...
-                </a>
-                <span className="result-pill" style={{ backgroundColor: '#ff4d4f', padding: '8px 15px' }}>
-                  {report.overall_paraphrase_percentage}% Match
+                <div>
+                   <span style={{ backgroundColor: '#ffccc7', color: '#a8071a', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', marginRight: '10px', fontWeight: 'bold' }}>HIGHEST MATCH</span>
+                   <a href={topMatch.url} target="_blank" rel="noreferrer" style={{ color: '#52c41a', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                     Source: {topMatch.url.substring(0, 60)}...
+                   </a>
+                </div>
+                <span className="result-pill" style={{ backgroundColor: '#ff4d4f', padding: '10px 20px', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                  {topMatch.overall_paraphrase_percentage}% Match
                 </span>
               </div>
               
-              <div style={{ marginTop: '10px', fontSize: '0.9rem', color: '#ccc' }}>
-                <p><strong>Sentences Analyzed:</strong> {report.total_sentences}</p>
-                <p><strong>Paraphrased Sentences Found:</strong> {report.plagiarized_count}</p>
+              <div style={{ marginTop: '15px', fontSize: '1rem', color: '#ccc', borderTop: '1px solid #333', paddingTop: '10px' }}>
+                <p><strong>Total Sentences Analyzed:</strong> {topMatch.total_sentences}</p>
+                <p><strong>Plagiarized Sentences Found:</strong> {topMatch.plagiarized_count}</p>
               </div>
 
-              <details style={{ marginTop: '10px' }}>
-                <summary style={{ cursor: 'pointer', color: '#1890ff' }}>View Matching Sentences</summary>
-                <div style={{ padding: '10px', background: '#222', borderRadius: '5px', marginTop: '5px' }}>
-                  {report.detailed_matches.map((m, i) => (
-                    <div key={i} style={{ marginBottom: '15px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
-                      <p style={{ color: '#ff7875' }}><strong>Student:</strong> {m.student_sentence}</p>
-                      <p style={{ color: '#95de64' }}><strong>Source:</strong> {m.source_sentence}</p>
+              <details style={{ marginTop: '15px' }} open>
+                <summary style={{ cursor: 'pointer', color: '#1890ff', fontWeight: 'bold' }}>View Matching Sentences Breakdown</summary>
+                <div style={{ padding: '15px', background: '#222', borderRadius: '8px', marginTop: '10px' }}>
+                  {topMatch.detailed_matches.map((m, i) => (
+                    <div key={i} style={{ marginBottom: '15px', borderBottom: '1px solid #444', paddingBottom: '15px' }}>
+                      <p style={{ color: '#ff7875', marginBottom: '5px' }}><strong>🔴 Student:</strong> {m.student_sentence}</p>
+                      <p style={{ color: '#95de64', marginBottom: '8px' }}><strong>🟢 Source:</strong> {m.source_sentence}</p>
                       
                       {/* Breakdown of Hybrid Scores */}
-                      <div style={{ display: 'flex', gap: '15px', marginTop: '8px', fontSize: '0.85rem' }}>
+                      <div style={{ display: 'flex', gap: '20px', marginTop: '10px', fontSize: '0.9rem', backgroundColor: '#333', padding: '8px', borderRadius: '5px' }}>
                         <span style={{ color: '#bae637' }}>
-                          🧠 <strong>Semantic :</strong> {m.semantic_score}%
+                          🧠 <strong>Semantic AI:</strong> {m.semantic_score}%
                         </span>
                         <span style={{ color: '#40a9ff' }}>
-                          ⚙️ <strong>Lexical Engine :</strong> {m.lexical_score}%
+                          ⚙️ <strong>Lexical:</strong> {m.lexical_score}%
+                        </span>
+                        <span style={{ color: '#fff', fontWeight: 'bold', marginLeft: 'auto' }}>
+                           🛡️ Final Score: {m.paraphrase_score}%
                         </span>
                       </div>
-
-                      <p style={{ fontSize: '0.9rem', marginTop: '5px', fontWeight: 'bold' }}>
-                        Final Hybrid Score: {m.paraphrase_score}%
-                      </p>
+                      <div style={{ marginTop: '5px', fontSize: '0.8rem', color: '#888', textAlign: 'right' }}>
+                         Mode: {m.mode || "Hybrid"}
+                      </div>
                     </div>
                   ))}
                 </div>
               </details>
             </div>
-          ))}
+          )}
 
           {/* CASE 2: 0% Matches across all sources */}
           {reports.length > 0 && !hasPlagiarism && (
-            <div className="par-result" style={{ display: 'block', padding: '30px', textAlign: 'center', backgroundColor: '#1a1a1a' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '10px' }}>✅</div>
+            <div className="par-result" style={{ display: 'block', padding: '30px', textAlign: 'center', backgroundColor: '#1a1a1a', border: '1px solid #333' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '15px' }}>✅</div>
               <h2 style={{ color: '#52c41a' }}>0% Match Detected</h2>
-              <p style={{ color: '#d1cfe0' }}>
+              <p style={{ color: '#d1cfe0', fontSize: '1.1rem' }}>
                 The system successfully analyzed the top internet resources. 
-                No paraphrased content exceeding the 70% threshold was found.
+                No paraphrased content exceeding the 50% threshold was found.
               </p>
             </div>
           )}
