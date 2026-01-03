@@ -36,7 +36,13 @@ export default function NavBar({ sidebarOpen, setSidebarOpen }) {
       </button>
 
       <div className={`nav-right ${menuOpen ? 'active' : ''}`}>
-        <a className="nav-profile" href="#/" onClick={() => setMenuOpen(false)}>Home</a>
+        <a
+          className="nav-profile"
+          href="#/"
+          onClick={() => setMenuOpen(false)}
+        >
+          Home
+        </a>
 
         {isAuthenticated ? (
           <>

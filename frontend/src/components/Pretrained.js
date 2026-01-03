@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import NavBar from './NavBar';
 import Sidebar from './Sidebar';
 import './Pretrained.css';
+import CircularGauge from './CircularGauge';
+
 
 export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
 const [file, setFile] = useState(null);
@@ -28,7 +30,8 @@ try {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch('/api/pretrained/check', {
+ const response = await fetch('http://127.0.0.1:5000/api/plagiarism/check', {
+
     method: 'POST',
     body: formData,
     credentials: 'same-origin',
@@ -39,7 +42,8 @@ try {
   }
 
   const data = await response.json();
-  setResult(data.score || 0);
+  setResult(data);
+;
 } catch (error) {
   alert('Error: ' + error.message);
   setResult(null);
@@ -84,12 +88,22 @@ return ( <div className="pre-wrap"> <NavBar sidebarOpen={sidebarOpen} setSidebar
         </div>
       </div>
 
-      {result !== null && (
-        <div className="pre-result">
-          <div className="result-label">Pretrained Score</div>
-          <div className="result-pill">{result}%</div>
-        </div>
-      )}
+  
+{result && (
+  <div className="pre-result">
+    <CircularGauge value={result.overall} />
+
+    <div className="score-breakdown">
+      <p>Overall Plagiarism: <b>{result.overall.toFixed(2)}%</b></p>
+      <p>Semantic Similarity: {result.semantic.toFixed(2)}%</p>
+      <p>Paraphrase Similarity: {result.paraphrase.toFixed(2)}%</p>
+      <p>Stylometric Similarity: {result.style.toFixed(2)}%</p>
+      <p>Status: <b>{result.decision}</b></p>
+    </div>
+  </div>
+)}
+
+
     </section>
   </div>
 </div>

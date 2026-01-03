@@ -26,18 +26,18 @@ function AppRoutes() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  // simple hash router
   const path = route.replace('#', '') || '/';
 
   if (path === '/login') return <Login />;
   if (path === '/signup') return <Signup />;
 
-  // merged correctly
+  // paraphrase page
   if (path === '/paraphrase')
     return <Paraphrase sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 
-  // keep your original pretrained route
-  if (path === '/pretrained') return <Pretrained sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+  // pretrained page (KEEP sidebar support)
+  if (path === '/pretrained')
+    return <Pretrained sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 
   if (path === '/writing-style-1') return <Feature title="Writing Style" />;
   if (path === '/writing-style-2') return <Feature title="Writing Style" />;
