@@ -3,18 +3,11 @@ from pydantic import BaseModel
 import sys
 import os
 
-# Get the absolute path to the WSA module folder
 wsa_path = os.path.join(os.path.dirname(__file__), "modules", "WSA")
 sys.path.append(wsa_path)
 
-# Now import the analyzer after the path is set
-try:
-    from wsa_engine import WSAAnalyzer
-    analyzer = WSAAnalyzer()
-    print("✅ WSA Engine and 1000+ record models loaded successfully.")
-except Exception as e:
-    print(f"❌ Initialization Error: {e}")
-
+from wsa_engine import WSAAnalyzer
+analyzer = WSAAnalyzer()
 app = FastAPI()
 
 class TextRequest(BaseModel):
@@ -23,11 +16,9 @@ class TextRequest(BaseModel):
 @app.post("/api/check-wsa")
 async def check_style(request: TextRequest):
     try:
-        results = analyzer.check_text(request.text)
-        return {
-            "style_change_ratio": results['ratio_data']['style_change_ratio'],
-            "sentence_map": results['ratio_data']['details']
-        }
+        # Await the async engine results
+        results = await analyzer.check_text(request.text)
+        return results['ratio_data']
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
