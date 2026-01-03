@@ -45,7 +45,7 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
         <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
         <section className="par-main">
-          <h1 className="par-title">Paraphrase Detection</h1>
+          <h1 className="par-title">Internet Paraphrase Detection</h1>
 
           <div className="par-card">
             {/* Input 1: Original Text */}
