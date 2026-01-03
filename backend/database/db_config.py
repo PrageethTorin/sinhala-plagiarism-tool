@@ -1,36 +1,28 @@
 # database/db_config.py
-"""
-Database Configuration and Service for Sinhala Plagiarism Detection Tool
-Handles MySQL connection and CRUD operations for plagiarism check history
-"""
 import mysql.connector
 from mysql.connector import pooling
-from datetime import datetime
 from typing import List, Dict, Optional
 import json
-import os
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Database configuration
-DB_CONFIG = {
-    'host': os.getenv('MYSQL_HOST', 'localhost'),
-    'user': os.getenv('MYSQL_USER', 'root'),
-    'password': os.getenv('MYSQL_PASSWORD', ''),  # Empty for XAMPP default
-    'database': os.getenv('MYSQL_DATABASE', 'sinhala_plagiarism_db'),
-    'charset': 'utf8mb4'
-}
 
-# Connection pool
-_pool = None
-_initialized = False
-
+# Database Connection 
 
 def get_db_connection():
-    """Get a database connection (legacy function)"""
-    return mysql.connector.connect(**DB_CONFIG)
+    """Get a database connection (team style)"""
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="MySql@123",  # Your MySQL password
+        database="sinhala_plagiarism_db",
+        charset='utf8mb4'  # Critical for Sinhala font support
+    )
 
+
+# Connection pool for better performance
+_pool = None
 
 def get_pool():
     """Get or create connection pool"""
@@ -41,7 +33,11 @@ def get_pool():
                 pool_name="plagiarism_pool",
                 pool_size=5,
                 pool_reset_session=True,
-                **DB_CONFIG
+                host="localhost",
+                user="root",
+                password="MySql@123",
+                database="sinhala_plagiarism_db",
+                charset='utf8mb4'
             )
             logger.info("MySQL connection pool created")
         except mysql.connector.Error as err:
@@ -52,8 +48,18 @@ def get_pool():
 
 def get_connection():
     """Get connection from pool"""
-    return get_pool().get_connection()
+    try:
+        return get_pool().get_connection()
+    except:
+        # Fallback to simple connection if pool fails
+        return get_db_connection()
 
+
+
+# Database Initialization
+
+
+_initialized = False
 
 def initialize_database():
     """Create database and tables if they don't exist"""
@@ -63,19 +69,21 @@ def initialize_database():
 
     try:
         # Connect without database first
-        config = DB_CONFIG.copy()
-        db_name = config.pop('database')
-
-        conn = mysql.connector.connect(**config)
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="MySql@123",
+            charset='utf8mb4'
+        )
         cursor = conn.cursor()
 
         # Create database
-        cursor.execute(f"""
-            CREATE DATABASE IF NOT EXISTS {db_name}
+        cursor.execute("""
+            CREATE DATABASE IF NOT EXISTS sinhala_plagiarism_db
             CHARACTER SET utf8mb4
             COLLATE utf8mb4_unicode_ci
         """)
-        cursor.execute(f"USE {db_name}")
+        cursor.execute("USE sinhala_plagiarism_db")
 
         # Create tables
         _create_tables(cursor)
@@ -95,6 +103,21 @@ def initialize_database():
 
 def _create_tables(cursor):
     """Create all required tables"""
+
+    # Users table for authentication
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NULL,
+            google_id VARCHAR(255) NULL,
+            auth_provider ENUM('email', 'google') DEFAULT 'email',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_email (email),
+            INDEX idx_google_id (google_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """)
 
     # Plagiarism check history
     cursor.execute("""
@@ -149,6 +172,10 @@ def _create_tables(cursor):
     """)
 
     logger.info("Tables created successfully")
+
+
+
+# Plagiarism Check History Functions
 
 
 def save_check(check_type: str, original_text: str, suspicious_text: str = None,
@@ -271,6 +298,117 @@ def db_health_check() -> Dict:
         cursor.fetchone()
         cursor.close()
         conn.close()
-        return {"status": "healthy", "database": DB_CONFIG['database']}
+        return {"status": "healthy", "database": "sinhala_plagiarism_db"}
     except mysql.connector.Error as err:
         return {"status": "unhealthy", "error": str(err)}
+
+
+
+# User Authentication CRUD Functions
+
+
+def create_user(email: str, password_hash: str) -> Optional[int]:
+    """Create a new user with email and password"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO users (email, password_hash, auth_provider)
+            VALUES (%s, %s, 'email')
+        """, (email, password_hash))
+
+        user_id = cursor.lastrowid
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return user_id
+
+    except mysql.connector.Error as err:
+        logger.error(f"Create user failed: {err}")
+        return None
+
+
+def create_google_user(email: str, google_id: str) -> Optional[int]:
+    """Create a new user with Google OAuth"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO users (email, google_id, auth_provider)
+            VALUES (%s, %s, 'google')
+        """, (email, google_id))
+
+        user_id = cursor.lastrowid
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return user_id
+
+    except mysql.connector.Error as err:
+        logger.error(f"Create Google user failed: {err}")
+        return None
+
+
+def get_user_by_email(email: str) -> Optional[Dict]:
+    """Get user by email address"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT id, email, password_hash, google_id, auth_provider, created_at
+            FROM users WHERE email = %s
+        """, (email,))
+
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return user
+
+    except mysql.connector.Error as err:
+        logger.error(f"Get user by email failed: {err}")
+        return None
+
+
+def get_user_by_google_id(google_id: str) -> Optional[Dict]:
+    """Get user by Google ID"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT id, email, password_hash, google_id, auth_provider, created_at
+            FROM users WHERE google_id = %s
+        """, (google_id,))
+
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return user
+
+    except mysql.connector.Error as err:
+        logger.error(f"Get user by Google ID failed: {err}")
+        return None
+
+
+def get_user_by_id(user_id: int) -> Optional[Dict]:
+    """Get user by ID"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT id, email, password_hash, google_id, auth_provider, created_at
+            FROM users WHERE id = %s
+        """, (user_id,))
+
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return user
+
+    except mysql.connector.Error as err:
+        logger.error(f"Get user by ID failed: {err}")
+        return None

@@ -17,6 +17,14 @@ except ImportError:
 # Import from your existing semantic_similarity module
 from modules.semantic_similarity.routes import router as semantic_router
 
+# Import authentication router
+try:
+    from auth.routes import router as auth_router
+    AUTH_AVAILABLE = True
+except ImportError:
+    AUTH_AVAILABLE = False
+    print("Auth module not available")
+
 # Import database configuration
 try:
     from database.db_config import initialize_database, db_health_check
@@ -48,6 +56,10 @@ app.add_middleware(
 # Include your existing semantic similarity router
 app.include_router(semantic_router, prefix="/api")
 
+# Include authentication router
+if AUTH_AVAILABLE:
+    app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -75,6 +87,7 @@ async def root():
         "version": "1.0.0",
         "google_api_configured": google_configured,
         "database_status": db_status.get("status", "unknown"),
+        "auth_available": AUTH_AVAILABLE,
         "endpoints": {
             "check_plagiarism": "POST /api/check-plagiarism",
             "supervisor_hybrid": "POST /api/supervisor-hybrid",
@@ -85,6 +98,10 @@ async def root():
             "statistics": "GET /api/statistics",
             "health": "GET /api/health",
             "algorithms": "GET /api/algorithms",
+            "auth_register": "POST /api/auth/register",
+            "auth_login": "POST /api/auth/login",
+            "auth_google": "POST /api/auth/google",
+            "auth_me": "GET /api/auth/me",
             "docs": "GET /docs"
         }
     }

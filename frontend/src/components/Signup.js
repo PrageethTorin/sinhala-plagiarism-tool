@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import './Login.css';
+import './Signup.css';
 
-export default function Login() {
-  const { login, googleLogin, isAuthenticated, GOOGLE_CLIENT_ID } = useAuth();
+export default function Signup() {
+  const { register, googleLogin, isAuthenticated, GOOGLE_CLIENT_ID } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +26,7 @@ export default function Login() {
       });
       window.google.accounts.id.renderButton(
         document.getElementById('google-signin-btn'),
-        { theme: 'outline', size: 'large', text: 'signin_with', width: 320 }
+        { theme: 'outline', size: 'large', text: 'signup_with', width: 320 }
       );
     }
   }, [GOOGLE_CLIENT_ID]);
@@ -39,7 +40,7 @@ export default function Login() {
         setError(result.message);
       }
     } catch (err) {
-      setError('Google sign-in failed');
+      setError('Google signup failed');
     } finally {
       setLoading(false);
     }
@@ -47,7 +48,7 @@ export default function Login() {
 
   const validateEmail = (e) => /\S+@\S+\.\S+/.test(e);
 
-  async function handleContinue(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError('');
 
@@ -67,32 +68,36 @@ export default function Login() {
       setError('Password must be at least 6 characters');
       return;
     }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
 
     setLoading(true);
     try {
-      const result = await login(email, password);
+      const result = await register(email, password);
       if (!result.success) {
         setError(result.message);
       }
     } catch (err) {
-      setError(err?.message || 'Login failed');
+      setError(err?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="login-container">
-      <div className="login-modal" role="dialog" aria-labelledby="login-title">
-        <h2 id="login-title" className="login-title">Sign in</h2>
-        <a className="login-create" href="#/signup">Don't have an account? Sign up</a>
+    <div className="signup-container">
+      <div className="signup-modal" role="dialog" aria-labelledby="signup-title">
+        <h2 id="signup-title" className="signup-title">Create Account</h2>
+        <a className="signup-login-link" href="#/login">Already have an account? Sign in</a>
 
-        <form className="login-form" onSubmit={handleContinue}>
+        <form className="signup-form" onSubmit={handleSubmit}>
           <label className="lbl-block" htmlFor="email">Email</label>
           <input
             id="email"
             type="email"
-            className="login-input"
+            className="signup-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@example.com"
@@ -103,27 +108,36 @@ export default function Login() {
           <input
             id="password"
             type="password"
-            className="login-input"
+            className="signup-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            autoComplete="current-password"
+            placeholder="At least 6 characters"
+            autoComplete="new-password"
           />
 
-          {error && <div className="login-error">{error}</div>}
+          <label className="lbl-block" htmlFor="confirmPassword">Confirm Password</label>
+          <input
+            id="confirmPassword"
+            type="password"
+            className="signup-input"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm your password"
+            autoComplete="new-password"
+          />
 
-          <button type="submit" className="btn-continue" disabled={loading}>
-            {loading ? 'Signing in...' : 'Continue'}
+          {error && <div className="signup-error">{error}</div>}
+
+          <button type="submit" className="btn-signup" disabled={loading}>
+            {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
-
-        <a className="login-help" href="#/">Can't sign in?</a>
 
         <div className="divider">
           <span>or</span>
         </div>
 
-        <div className="oauth-list">
+        <div className="oauth-section">
           {GOOGLE_CLIENT_ID ? (
             <div id="google-signin-btn"></div>
           ) : (
@@ -133,8 +147,8 @@ export default function Login() {
           )}
         </div>
 
-        <p className="recaptcha-note">
-          This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.
+        <p className="terms-note">
+          By creating an account, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>
     </div>
