@@ -109,6 +109,7 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     setGoogleResult(null);
 
     try {
+
       const response = await axios.post(`${API_BASE_URL}/api/web-search-check`, {
         text_pair: {
           original: googleText,

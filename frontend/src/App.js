@@ -5,7 +5,6 @@ import Home from './components/Home';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Paraphrase from './components/Paraphrase';
-import SemanticSimilarity from './components/SemanticSimilarity';
 import Pretrained from './components/Pretrained';
 
 function Feature({ title }) {
@@ -41,7 +40,7 @@ function AppRoutes() {
   if (path === '/pretrained') return <Pretrained sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 
   if (path === '/writing-style-1') return <Feature title="Writing Style" />;
-  if (path === '/writing-style-2') return <SemanticSimilarity sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+  if (path === '/writing-style-2') return <Feature title="Writing Style" />;
   if (path === '/writing-style-3') return <Feature title="Writing Style" />;
 
   return <Home sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
