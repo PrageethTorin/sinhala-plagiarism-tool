@@ -49,3 +49,5 @@ frontend/src/components/Signup.css
 **/Signup.js
 **/Signup.css
 **/AuthContext.js
+# Python virtual environment
+.venv/
