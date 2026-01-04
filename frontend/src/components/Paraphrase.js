@@ -72,7 +72,7 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
             </div>
           </div>
 
-          {/* CASE 1: Display ONLY the Highest Detection Website */}
+          {/* CASE 1: Display ONLY the Highest Detection Website...*/}
           {topMatch && (
             <div className="par-result" style={{ display: 'block', marginBottom: '20px', padding: '20px', borderLeft: '5px solid #ff4d4f' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
