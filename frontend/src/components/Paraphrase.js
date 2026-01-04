@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import NavBar from './NavBar';
 import Sidebar from './Sidebar';
 import './Paraphrase.css';
+import React from 'react';  
+
 
 export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
   // State to store input texts
@@ -39,6 +41,7 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
   };
 
   // LOGIC: Filter for matches > 0% and then find the one with the HIGHEST percentage
+  const reports = result?.reports || [];
   const matches = reports.filter(r => r.overall_paraphrase_percentage > 0);
   const topMatch = matches.length > 0 
     ? matches.reduce((prev, current) => (prev.overall_paraphrase_percentage > current.overall_paraphrase_percentage) ? prev : current) 
@@ -147,7 +150,8 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
                 The system successfully analyzed the top internet resources. 
                 No paraphrased content exceeding the 50% threshold was found.
               </p>
-        </section>
+            </div>
+          )}
       </div>
     </div>
   );
