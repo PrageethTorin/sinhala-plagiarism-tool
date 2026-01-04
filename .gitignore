@@ -1,0 +1,40 @@
+# Global ignores
+*.env
+*.env.local
+*.log
+*.sqlite3
+.DS_Store
+Thumbs.db
+
+# Python + Node common folders
+.claude
+__pycache__/
+*.pyc
+node_modules/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS files
+*.swp
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+
+# Byte-compiled folders
+**/__pycache__/
+
+# Local setup scripts (has hardcoded credentials)
+setup_mysql.bat
+**/setup_mysql.bat
+
+# ML Model files (downloaded from HuggingFace on first run)
+sinhala_fine_tuned_model/
+**/sinhala_fine_tuned_model/
+*.safetensors

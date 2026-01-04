@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
+import { AuthProvider } from './context/AuthContext';
 import Home from './components/Home';
 import Login from './components/Login';
+import Signup from './components/Signup';
 import Paraphrase from './components/Paraphrase';
 import Pretrained from './components/Pretrained';
 
@@ -14,7 +16,7 @@ function Feature({ title }) {
   );
 }
 
-function App() {
+function AppRoutes() {
   const [route, setRoute] = useState(window.location.hash || '#/');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -24,10 +26,10 @@ function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  // simple hash router
   const path = route.replace('#', '') || '/';
 
   if (path === '/login') return <Login />;
+  if (path === '/signup') return <Signup />;
 
   // merged correctly
   if (path === '/paraphrase')
@@ -42,6 +44,14 @@ function App() {
   
 
   return <Home sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
+  );
 }
 
 export default App;

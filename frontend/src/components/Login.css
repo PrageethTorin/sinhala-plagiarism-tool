@@ -117,6 +117,29 @@
   text-decoration: underline;
 }
 
+<<<<<<< HEAD
+=======
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #d1d5db;
+}
+
+.divider span {
+  padding: 0 10px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+>>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13
 .oauth-list {
   display: flex;
   flex-direction: column;

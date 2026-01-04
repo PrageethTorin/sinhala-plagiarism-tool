@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import './NavBar.css';
 
 export default function NavBar({ sidebarOpen, setSidebarOpen }) {
+  const { user, isAuthenticated, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    setMenuOpen(false);
+    logout();
+  };
 
   return (
     <header className="navbar">
-      <button 
+      <button
         className="sidebar-toggle-nav"
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-label="Toggle sidebar"
@@ -18,15 +25,44 @@ export default function NavBar({ sidebarOpen, setSidebarOpen }) {
         <a href="#/" className="nav-brand">Sinhala Plagiarism Tool</a>
       </div>
 
-      <div className="nav-right">
-        <a className="nav-profile" href="#/">Home</a>
-        <a className="nav-profile" href="#/">My Profile</a>
-          <button
-          className="nav-login"
+      <button
+        className="nav-hamburger"
+        onClick={() => setMenuOpen(!menuOpen)}
+        aria-label="Toggle menu"
+      >
+        <span className={menuOpen ? 'open' : ''}></span>
+        <span className={menuOpen ? 'open' : ''}></span>
+        <span className={menuOpen ? 'open' : ''}></span>
+      </button>
+
+      <div className={`nav-right ${menuOpen ? 'active' : ''}`}>
+        <a
+          className="nav-profile"
+          href="#/"
           onClick={() => setMenuOpen(false)}
         >
-          Login1
-        </button>
+          Home
+        </a>
+
+        {isAuthenticated ? (
+          <>
+            <span className="nav-user-email">{user?.email}</span>
+            <button
+              className="nav-logout-btn"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          </>
+        ) : (
+          <a
+            href="#/login"
+            className="nav-login"
+            onClick={() => setMenuOpen(false)}
+          >
+            Login
+          </a>
+        )}
       </div>
     </header>
   );

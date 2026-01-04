@@ -4,10 +4,10 @@ import mysql.connector
 
 try:
     print("Attempting to connect...")
-    
+
     # 1. Try to get the connection
     conn = get_db_connection()
-    
+
     # 2. If we get here, the login worked. Now let's check the database info.
     if conn.is_connected():
         db_info = conn.get_server_info()
@@ -33,4 +33,4 @@ except mysql.connector.Error as err:
     
 except ImportError:
     print("\n❌ ERROR: Python cannot find your 'database' folder.")
-    print("Make sure you are running this script from the root 'SinhalaParaphraseProject' folder.")
+    print("Make sure you are running this script from the backend folder.")
