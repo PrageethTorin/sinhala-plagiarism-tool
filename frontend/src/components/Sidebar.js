@@ -32,6 +32,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
           <a
             href="#/paraphrase"
+
             className={`sidebar-item ${activeItem === '#/paraphrase' ? 'sidebar-active' : ''}`}
             onClick={() => setSidebarOpen(false)}
           >
@@ -41,7 +42,9 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
           <a
             href="#/writing-style-1"
+
             className={`sidebar-item ${activeItem === '#/writing-style-1' ? 'sidebar-active' : ''}`}
+
             onClick={() => setSidebarOpen(false)}
           >
             <span className="sidebar-icon">✍️</span>
@@ -50,7 +53,9 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
           <a
             href="#/writing-style-2"
+
             className={`sidebar-item ${activeItem === '#/writing-style-2' ? 'sidebar-active' : ''}`}
+
             onClick={() => setSidebarOpen(false)}
           >
             <span className="sidebar-icon">🔍</span>
@@ -59,6 +64,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
           <a
             href="#/pretrained"
+
             className={`sidebar-item ${activeItem === '#/pretrained' ? 'sidebar-active' : ''}`}
             onClick={() => setSidebarOpen(false)}
           >
