@@ -40,7 +40,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           </a>
 
           <a
-            href="#/writing-style-1"
+            href="#/writing-style"
             className="sidebar-item"
             onClick={() => setSidebarOpen(false)}
           >

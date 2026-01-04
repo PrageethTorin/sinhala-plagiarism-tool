@@ -4,32 +4,36 @@ import Sidebar from './Sidebar';
 import './Paraphrase.css';
 
 export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
-  const [studentText, setStudentText] = useState("");
-  const [reports, setReports] = useState([]); 
+  // State to store input texts
+  const [sourceText, setSourceText] = useState("");
+  const [suspiciousText, setSuspiciousText] = useState("");
+  
+  // State to store the result from Python
+  const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const handleInternetCheck = async () => {
-    if (!studentText) {
-      alert("Please enter the student's text to scan the internet!");
+  const handleCheck = async () => {
+    if (!sourceText || !suspiciousText) {
+      alert("Please enter text in both boxes!");
       return;
     }
 
     setLoading(true);
-    setReports([]); 
+    setResult(null); // Clear previous results
 
     try {
-      const response = await fetch('http://localhost:5000/api/check-internet', {
+      // Send data to your Python Backend
+      const response = await fetch('http://localhost:5000/api/check-paraphrase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentText })
+        body: JSON.stringify({ sourceText, suspiciousText })
       });
 
       const data = await response.json();
-      if (data.error) throw new Error(data.error);
-      setReports(data);
+      setResult(data);
     } catch (error) {
       console.error("Error:", error);
-      alert("Error: " + error.message);
+      alert("Could not connect to the Python backend. Is server.py running?");
     }
     setLoading(false);
   };
@@ -41,7 +45,6 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
     : null;
 
   const hasPlagiarism = topMatch !== null;
-
   return (
     <div className="par-wrap">
       <NavBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
@@ -52,22 +55,35 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
           <h1 className="par-title">Internet Paraphrase Detection</h1>
 
           <div className="par-card">
-            <label className="lbl-block">Paste Student's Work (to scan the web):</label>
+            {/* Input 1: Original Text */}
+            <label className="lbl-block">Original Source Text:</label>
             <textarea 
               className="original-box" 
-              placeholder="Paste Sinhala content here to search for paraphrased matches online..."
-              value={studentText}
-              onChange={(e) => setStudentText(e.target.value)}
-              style={{ height: '200px' }}
+              placeholder="Paste original content here..."
+              value={sourceText}
+              onChange={(e) => setSourceText(e.target.value)}
+              style={{ marginBottom: '20px' }}
+            />
+
+            {/* Input 2: Suspicious Text */}
+            <label className="lbl-block">Suspicious / Student Text:</label>
+            <textarea 
+              className="original-box" 
+              placeholder="Paste suspicious content here..."
+              value={suspiciousText}
+              onChange={(e) => setSuspiciousText(e.target.value)}
             />
 
             <div className="par-actions">
+              <input type="file" className="file-input" disabled title="Coming Soon" />
+              
               <button 
                 className="par-check" 
-                onClick={handleInternetCheck} 
+                onClick={handleCheck} 
                 disabled={loading}
+                style={{ opacity: loading ? 0.7 : 1 }}
               >
-                {loading ? "🔍 Scanning Web..." : "Scan Internet for Paraphrase"}
+                {loading ? "Analyzing..." : "Check Paraphrase"}
               </button>
             </div>
           </div>
@@ -131,8 +147,6 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
                 The system successfully analyzed the top internet resources. 
                 No paraphrased content exceeding the 50% threshold was found.
               </p>
-            </div>
-          )}
         </section>
       </div>
     </div>
