@@ -1,7 +1,4 @@
--- Run: mysql -u root -p < setup_database.sql
-
-
--- Create database with Sinhala/Unicode support
+--- Create database with Sinhala/Unicode support
 CREATE DATABASE IF NOT EXISTS sinhala_plagiarism_db
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;

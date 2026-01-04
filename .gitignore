@@ -38,3 +38,14 @@ setup_mysql.bat
 sinhala_fine_tuned_model/
 **/sinhala_fine_tuned_model/
 *.safetensors
+
+# Authentication files (not going to main branch)
+backend/auth/
+**/backend/auth/
+frontend/src/context/
+**/frontend/src/context/
+frontend/src/components/Signup.js
+frontend/src/components/Signup.css
+**/Signup.js
+**/Signup.css
+**/AuthContext.js

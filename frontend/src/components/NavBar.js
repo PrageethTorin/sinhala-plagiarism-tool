@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import './NavBar.css';
 
 export default function NavBar({ sidebarOpen, setSidebarOpen }) {
-  const { user, isAuthenticated, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const handleLogout = () => {
-    setMenuOpen(false);
-    logout();
-  };
 
   return (
     <header className="navbar">
@@ -37,26 +30,6 @@ export default function NavBar({ sidebarOpen, setSidebarOpen }) {
 
       <div className={`nav-right ${menuOpen ? 'active' : ''}`}>
         <a className="nav-profile" href="#/" onClick={() => setMenuOpen(false)}>Home</a>
-
-        {isAuthenticated ? (
-          <>
-            <span className="nav-user-email">{user?.email}</span>
-            <button
-              className="nav-logout-btn"
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
-          </>
-        ) : (
-          <a
-            href="#/login"
-            className="nav-login"
-            onClick={() => setMenuOpen(false)}
-          >
-            Login
-          </a>
-        )}
       </div>
     </header>
   );
