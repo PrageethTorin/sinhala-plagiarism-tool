@@ -15,7 +15,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="MySql@123",  # Your MySQL password
+        password="root",  # Your MySQL password
         database="sinhala_plagiarism_db",
         charset='utf8mb4'  # Critical for Sinhala font support
     )

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import './Signup.css';
 
@@ -29,9 +29,9 @@ export default function Signup() {
         { theme: 'outline', size: 'large', text: 'signup_with', width: 320 }
       );
     }
-  }, [GOOGLE_CLIENT_ID]);
+  }, [GOOGLE_CLIENT_ID, handleGoogleResponse]);
 
-  const handleGoogleResponse = async (response) => {
+  const handleGoogleResponse = useCallback(async (response) => {
     setLoading(true);
     setError('');
     try {
@@ -44,7 +44,7 @@ export default function Signup() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [googleLogin]);
 
   const validateEmail = (e) => /\S+@\S+\.\S+/.test(e);
 
