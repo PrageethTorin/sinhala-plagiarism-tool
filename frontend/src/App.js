@@ -6,6 +6,7 @@ import Login from './components/Login';
 import Signup from './components/Signup';
 import Paraphrase from './components/Paraphrase';
 import Pretrained from './components/Pretrained';
+import WritingStyle from './components/WritingStyle';
 
 function Feature({ title }) {
   return (
@@ -31,17 +32,17 @@ function AppRoutes() {
   if (path === '/login') return <Login />;
   if (path === '/signup') return <Signup />;
 
-  // paraphrase page
+  // merged correctly
   if (path === '/paraphrase')
     return <Paraphrase sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 
-  // pretrained page (KEEP sidebar support)
-  if (path === '/pretrained')
-    return <Pretrained sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+  // keep your original pretrained route
+  if (path === '/pretrained') return <Pretrained sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 
-  if (path === '/writing-style-1') return <Feature title="Writing Style" />;
+  if (path === '/writing-style') return <WritingStyle sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
   if (path === '/writing-style-2') return <Feature title="Writing Style" />;
   if (path === '/writing-style-3') return <Feature title="Writing Style" />;
+  
 
   return <Home sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 }

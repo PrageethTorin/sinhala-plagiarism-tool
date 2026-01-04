@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import NavBar from './NavBar';
 import Sidebar from './Sidebar';
 import './Pretrained.css';
+<<<<<<< HEAD
+=======
 import CircularGauge from './CircularGauge';
 
+>>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13
 
 export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
 const [file, setFile] = useState(null);
@@ -30,8 +33,12 @@ try {
   const formData = new FormData();
   formData.append('file', file);
 
+<<<<<<< HEAD
+  const response = await fetch('/api/pretrained/check', {
+=======
  const response = await fetch('http://127.0.0.1:5000/api/plagiarism/check', {
 
+>>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13
     method: 'POST',
     body: formData,
     credentials: 'same-origin',
@@ -42,8 +49,12 @@ try {
   }
 
   const data = await response.json();
+<<<<<<< HEAD
+  setResult(data.score || 0);
+=======
   setResult(data);
 ;
+>>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13
 } catch (error) {
   alert('Error: ' + error.message);
   setResult(null);
@@ -88,6 +99,14 @@ return ( <div className="pre-wrap"> <NavBar sidebarOpen={sidebarOpen} setSidebar
         </div>
       </div>
 
+<<<<<<< HEAD
+      {result !== null && (
+        <div className="pre-result">
+          <div className="result-label">Pretrained Score</div>
+          <div className="result-pill">{result}%</div>
+        </div>
+      )}
+=======
   
 {result && (
   <div className="pre-result">
@@ -104,6 +123,7 @@ return ( <div className="pre-wrap"> <NavBar sidebarOpen={sidebarOpen} setSidebar
 )}
 
 
+>>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13
     </section>
   </div>
 </div>
