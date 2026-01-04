@@ -106,8 +106,6 @@ font-size: 28px;
 .pre-body { flex-direction: column; }
 .pre-main { padding:20px; margin-left:0; }
 }
-<<<<<<< HEAD
-=======
 /* Extend existing result UI */
 .pre-result-extended {
   justify-content: center;
@@ -150,4 +148,3 @@ font-size: 28px;
 .dot.semantic { background: #7c4dff; }
 .dot.paraphrase { background: #00bfa5; }
 .dot.style { background: #ff9800; }
->>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13

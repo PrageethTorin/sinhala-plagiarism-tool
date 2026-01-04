@@ -7,11 +7,7 @@
 
 .sem-body {
   display: flex;
-<<<<<<< HEAD
-  max-width: 1200px;
-=======
   max-width: 1400px;
->>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13
   margin: 18px auto;
 }
 
@@ -26,8 +22,6 @@
   margin-top: 18px;
   font-size: 28px;
   color: #fff;
-<<<<<<< HEAD
-=======
   margin-bottom: 30px;
 }
 
@@ -145,7 +139,6 @@
 
 /* VS Separator */
 .vs-separator {
->>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13
 }
 
 /* Card Box */
@@ -174,10 +167,6 @@
 .sem-actions {
   display: flex;
   align-items: center;
-<<<<<<< HEAD
-  justify-content: space-between;
-  margin-top: 12px;
-=======
   justify-content: center;
 }
 
@@ -1420,7 +1409,6 @@
 
 .sentence-source .sentence-label {
   color: #ff4757;
->>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13
 }
 
 .file-input {
@@ -1515,9 +1503,6 @@
   .sem-check { padding: 8px 10px; font-size: 12px; }
   .result-label { font-size: 14px; }
   .result-pill { font-size: 20px; padding: 10px 20px; }
-<<<<<<< HEAD
-}
-=======
 
 }
 
@@ -1607,4 +1592,3 @@
     align-items: flex-start;
   }
 }
->>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13

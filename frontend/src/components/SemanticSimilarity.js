@@ -194,41 +194,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
         <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
         <section className="sem-main">
-<<<<<<< HEAD
-          <h1 className="sem-title">Semantic Similarity</h1>
-
-          <div className="sem-card">
-            <label className="lbl-block">Upload Document:</label>
-
-            <div className="semantic-box" />
-
-            <div className="sem-actions">
-              <input
-                type="file"
-                className="file-input"
-                onChange={handleFileChange}
-                accept=".pdf,.txt,.doc,.docx"
-              />
-
-              <span className="file-name">{fileName}</span>
-
-              <button
-                className="sem-check"
-                onClick={handleCheck}
-                disabled={loading}
-              >
-                {loading ? 'Checking...' : 'Check'}
-              </button>
-            </div>
-          </div>
-
-          {result !== null && (
-            <div className="sem-result">
-              <div className="result-label">Similarity Score</div>
-              <div className="result-pill">{result}%</div>
-            </div>
-          )}
-=======
           <h1 className="sem-title">Sinhala Plagiarism Detection</h1>
 
           {error && (
@@ -866,7 +831,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
               </div>
             )}
           </div>
->>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13
         </section>
       </div>
     </div>

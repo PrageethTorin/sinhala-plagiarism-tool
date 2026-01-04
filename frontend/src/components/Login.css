@@ -117,8 +117,6 @@
   text-decoration: underline;
 }
 
-<<<<<<< HEAD
-=======
 .divider {
   display: flex;
   align-items: center;
@@ -139,7 +137,6 @@
   font-size: 14px;
 }
 
->>>>>>> 5673241b182fadae9c0cb3ec5af5138f234b4b13
 .oauth-list {
   display: flex;
   flex-direction: column;
