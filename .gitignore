@@ -5,6 +5,7 @@
 *.sqlite3
 .DS_Store
 Thumbs.db
+nul
 
 # Python + Node common folders
 .claude
