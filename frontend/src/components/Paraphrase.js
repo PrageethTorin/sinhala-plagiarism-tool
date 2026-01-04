@@ -103,7 +103,7 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
                       {/* Breakdown of Hybrid Scores */}
                       <div style={{ display: 'flex', gap: '20px', marginTop: '10px', fontSize: '0.9rem', backgroundColor: '#333', padding: '8px', borderRadius: '5px' }}>
                         <span style={{ color: '#bae637' }}>
-                          🧠 <strong>Semantic AI:</strong> {m.semantic_score}%
+                          🧠 <strong>Sinhala Model:</strong> {m.semantic_score}%
                         </span>
                         <span style={{ color: '#40a9ff' }}>
                           ⚙️ <strong>Lexical:</strong> {m.lexical_score}%
