@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Sentence-transformer / model caches
+data/
+cache/
+*.bin
+
+# Uploaded files (if any)
+uploads/
+temp/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+*.env
+.env.*

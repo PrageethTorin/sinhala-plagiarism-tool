@@ -6,7 +6,7 @@ export default function NavBar({ sidebarOpen, setSidebarOpen }) {
 
   return (
     <header className="navbar">
-      <button 
+      <button
         className="sidebar-toggle-nav"
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-label="Toggle sidebar"
@@ -18,15 +18,18 @@ export default function NavBar({ sidebarOpen, setSidebarOpen }) {
         <a href="#/" className="nav-brand">Sinhala Plagiarism Tool</a>
       </div>
 
-      <div className="nav-right">
-        <a className="nav-profile" href="#/">Home</a>
-        <a className="nav-profile" href="#/">My Profile</a>
-          <button
-          className="nav-login"
-          onClick={() => setMenuOpen(false)}
-        >
-          Login1
-        </button>
+      <button
+        className="nav-hamburger"
+        onClick={() => setMenuOpen(!menuOpen)}
+        aria-label="Toggle menu"
+      >
+        <span className={menuOpen ? 'open' : ''}></span>
+        <span className={menuOpen ? 'open' : ''}></span>
+        <span className={menuOpen ? 'open' : ''}></span>
+      </button>
+
+      <div className={`nav-right ${menuOpen ? 'active' : ''}`}>
+        <a className="nav-profile" href="#/" onClick={() => setMenuOpen(false)}>Home</a>
       </div>
     </header>
   );

@@ -1,108 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import './Login.css';
 
-export default function Login({ onSubmit }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const validateEmail = (e) => /\S+@\S+\.\S+/.test(e);
-
-  async function handleContinue(e) {
-    e.preventDefault();
-    setError('');
-    
-    if (!email) {
-      setError('Email is required');
-      return;
-    }
-    if (!validateEmail(email)) {
-      setError('Enter a valid email');
-      return;
-    }
-    if (!password) {
-      setError('Password is required');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
-    if (!onSubmit) {
-      window.location.hash = '#/';
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await onSubmit(email, password);
-      if (!result || !result.success) {
-        setError(result?.message || 'Invalid credentials');
-      }
-    } catch (err) {
-      setError(err?.message || 'Login failed');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleOAuth(provider) {
-    console.log('OAuth:', provider);
-  }
-
+export default function Login() {
   return (
     <div className="login-container">
       <div className="login-modal" role="dialog" aria-labelledby="login-title">
-        <h2 id="login-title" className="login-title">Sign in</h2>
-        <a className="login-create" href="#/">I don't have an account</a>
-
-        <form className="login-form" onSubmit={handleContinue}>
-          <label className="lbl-block" htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            className="login-input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@example.com"
-            autoComplete="email"
-          />
-
-          <label className="lbl-block" htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            className="login-input"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            autoComplete="current-password"
-          />
-
-          {error && <div className="login-error">{error}</div>}
-
-          <button type="submit" className="btn-continue" disabled={loading}>
-            {loading ? 'Signing in...' : 'Continue'}
-          </button>
-        </form>
-
-        <a className="login-help" href="#/">Can't sign in?</a>
-
-        <div className="oauth-list">
-          <button type="button" className="oauth-btn" onClick={() => handleOAuth('google')}>
-            <span className="oauth-icon">G</span> Sign in with Google
-          </button>
-          <button type="button" className="oauth-btn" onClick={() => handleOAuth('facebook')}>
-            <span className="oauth-icon">f</span> Sign in with Facebook
-          </button>
-          
-        </div>
-
-        <p className="recaptcha-note">
-          This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.
+        <h2 id="login-title" className="login-title">Login</h2>
+        <p style={{ color: '#d1cfe0', textAlign: 'center', marginTop: '20px' }}>
+          Login functionality is not available.
         </p>
+        <a href="#/" className="btn-continue" style={{ display: 'block', textAlign: 'center', marginTop: '20px', textDecoration: 'none' }}>
+          Go to Home
+        </a>
       </div>
     </div>
   );
