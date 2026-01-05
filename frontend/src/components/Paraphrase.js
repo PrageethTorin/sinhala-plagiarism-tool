@@ -2,52 +2,46 @@ import React, { useState } from 'react';
 import NavBar from './NavBar';
 import Sidebar from './Sidebar';
 import './Paraphrase.css';
-import React from 'react';  
-
 
 export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
-  // State to store input texts
-  const [sourceText, setSourceText] = useState("");
-  const [suspiciousText, setSuspiciousText] = useState("");
-  
-  // State to store the result from Python
-  const [result, setResult] = useState(null);
+  const [studentText, setStudentText] = useState("");
+  const [reports, setReports] = useState([]); 
   const [loading, setLoading] = useState(false);
 
-  const handleCheck = async () => {
-    if (!sourceText || !suspiciousText) {
-      alert("Please enter text in both boxes!");
+  const handleInternetCheck = async () => {
+    if (!studentText) {
+      alert("Please enter the student's text to scan the internet!");
       return;
     }
 
     setLoading(true);
-    setResult(null); // Clear previous results
+    setReports([]); 
 
     try {
-      // Send data to your Python Backend
-      const response = await fetch('http://localhost:5000/api/check-paraphrase', {
+      const response = await fetch('http://localhost:5000/api/check-internet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceText, suspiciousText })
+        body: JSON.stringify({ studentText })
       });
 
       const data = await response.json();
-      setResult(data);
+      if (data.error) throw new Error(data.error);
+      setReports(data);
     } catch (error) {
       console.error("Error:", error);
-      alert("Could not connect to the Python backend. Is server.py running?");
+      alert("Error: " + error.message);
     }
     setLoading(false);
   };
 
   // LOGIC: Filter for matches > 0% and then find the one with the HIGHEST percentage
-  const reports = result?.reports || [];
   const matches = reports.filter(r => r.overall_paraphrase_percentage > 0);
   const topMatch = matches.length > 0 
     ? matches.reduce((prev, current) => (prev.overall_paraphrase_percentage > current.overall_paraphrase_percentage) ? prev : current) 
     : null;
 
   const hasPlagiarism = topMatch !== null;
+
   return (
     <div className="par-wrap">
       <NavBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
@@ -58,35 +52,22 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
           <h1 className="par-title">Internet Paraphrase Detection</h1>
 
           <div className="par-card">
-            {/* Input 1: Original Text */}
-            <label className="lbl-block">Original Source Text:</label>
+            <label className="lbl-block">Paste Student's Work (to scan the web):</label>
             <textarea 
               className="original-box" 
-              placeholder="Paste original content here..."
-              value={sourceText}
-              onChange={(e) => setSourceText(e.target.value)}
-              style={{ marginBottom: '20px' }}
-            />
-
-            {/* Input 2: Suspicious Text */}
-            <label className="lbl-block">Suspicious / Student Text:</label>
-            <textarea 
-              className="original-box" 
-              placeholder="Paste suspicious content here..."
-              value={suspiciousText}
-              onChange={(e) => setSuspiciousText(e.target.value)}
+              placeholder="Paste Sinhala content here to search for paraphrased matches online..."
+              value={studentText}
+              onChange={(e) => setStudentText(e.target.value)}
+              style={{ height: '200px' }}
             />
 
             <div className="par-actions">
-              <input type="file" className="file-input" disabled title="Coming Soon" />
-              
               <button 
                 className="par-check" 
-                onClick={handleCheck} 
+                onClick={handleInternetCheck} 
                 disabled={loading}
-                style={{ opacity: loading ? 0.7 : 1 }}
               >
-                {loading ? "Analyzing..." : "Check Paraphrase"}
+                {loading ? "🔍 Scanning Web..." : "Scan Internet for Paraphrase"}
               </button>
             </div>
           </div>
@@ -152,6 +133,7 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
               </p>
             </div>
           )}
+        </section>
       </div>
     </div>
   );

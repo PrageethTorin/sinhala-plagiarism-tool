@@ -1,18 +1,19 @@
 import trafilatura
 import re
 import asyncio
-from ddgs import DDGS # Fixed naming convention
+from ddgs import DDGS 
 from playwright.async_api import async_playwright
 
-def clean_sinhala_text(text):
-    """Normalizes Sinhala characters to ensure 100% similarity matching."""
+def clean_text(text):
+    """Normalizes Sinhala text for accurate similarity matching."""
+    if not text: return ""
+    # Keep only Sinhala Unicode range and spaces
     text = re.sub(r'[^\u0D80-\u0DFF\s]', '', text) 
     return " ".join(text.split()).strip()
 
 async def get_internet_resources(query_text, num_results=7):
-    """DISCOVERY: High-accuracy search restricted to WSA research."""
+    """DISCOVERY: Fetches high-confidence URLs from the web."""
     links = []
-    print(f"\n📡 [Discovery] High-Accuracy Search active for WSA...")
     try:
         def fetch_search():
             with DDGS() as ddgs:
@@ -24,14 +25,13 @@ async def get_internet_resources(query_text, num_results=7):
         for url in results:
             if not url.lower().endswith(".pdf"):
                 links.append(url)
-                print(f"   [{len(links)}] Found: {url}")
             if len(links) >= num_results: break
     except Exception as e:
-        print(f"⚠️ Search Error: {e}")
+        print(f"📡 Search Error: {e}")
     return links
 
 async def scrape_url_content(url):
-    """EXTRACTION: Scrapes text and applies the Sinhala cleaner."""
+    """EXTRACTION: Scrapes core content and cleans it."""
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -40,6 +40,6 @@ async def scrape_url_content(url):
             content = await page.content()
             await browser.close()
             text = trafilatura.extract(content, include_comments=False)
-            return clean_sinhala_text(text) if text else ""
+            return clean_text(text)
     except Exception:
         return ""
