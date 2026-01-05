@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware # NEW: Required for React connectivity
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sys
 import os
@@ -12,18 +12,16 @@ if wsa_path not in sys.path:
 
 from wsa_engine import WSAAnalyzer
 
-# Initialize FastAPI and the Writing Style Analyzer
 app = FastAPI()
 analyzer = WSAAnalyzer()
 
-# --- NEW: CORS MIDDLEWARE CONFIGURATION ---
-# This allows your React app (on port 3000) to talk to this API (on port 8000)
+# CORS configuration to allow React communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins for development
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows POST, OPTIONS, GET, etc.
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 class TextRequest(BaseModel):
@@ -32,14 +30,11 @@ class TextRequest(BaseModel):
 @app.post("/api/check-wsa")
 async def check_style(request: TextRequest):
     try:
-        # 1. Ensure the text is not empty
         if not request.text.strip():
             raise HTTPException(status_code=400, detail="Input text is empty")
 
-        # 2. Await the results from the analyzer engine
+        # Results must be awaited to resolve the coroutine
         results = await analyzer.check_text(request.text)
-        
-        # 3. Extract the processed research data
         data = results.get('ratio_data', {})
         
         return {
@@ -49,11 +44,9 @@ async def check_style(request: TextRequest):
             "sentence_map": data.get('sentence_map', [])
         }
     except Exception as e:
-        # Log the error on the server side for debugging
         print(f"📡 SERVER ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
-    # Port 8000 must match the URL used in your React 'fetch' call
     uvicorn.run(app, host="127.0.0.1", port=8000)

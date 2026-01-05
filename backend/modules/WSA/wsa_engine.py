@@ -15,8 +15,9 @@ class WSAAnalyzer:
         return (len(set(words)) / len(words)) * 100
 
     async def check_text(self, input_text):
+        # Split text into sentences for mapping
         sentences = [s.strip() for s in input_text.split('.') if len(s.strip()) > 5]
-        if len(sentences) < 1:
+        if not sentences:
             return {"ratio_data": {"style_change_ratio": 0, "matched_url": "No source found", "sentence_map": []}}
 
         # Establish Baseline from first 2 sentences
@@ -33,22 +34,23 @@ class WSAAnalyzer:
             if i < 2:
                 is_outlier = False
             else:
-                # FIXED: Cast NumPy result to standard Python bool to prevent FastAPI crash
+                # Force standard Python bool to avoid FastAPI crash
                 is_outlier = bool(abs(curr_len - base_len) > (base_len * 0.20) or \
                                   abs(curr_ttr - base_ttr) > (base_ttr * 0.20))
             
             if is_outlier: flagged_count += 1
             
             sentence_map.append({
-                "id": i + 1, 
-                "length": int(curr_len), # Ensure integer
-                "lexical_ttr": float(round(curr_ttr, 2)), # Ensure float
+                "id": i + 1,
+                "text": s,
+                "length": int(curr_len),
+                "lexical_ttr": float(round(curr_ttr, 2)),
                 "is_outlier": is_outlier
             })
 
         # Internet Discovery Layer
         clean_input = clean_text(input_text)
-        links = await get_internet_resources(clean_input[:150], num_results=7)
+        links = await get_internet_resources(clean_input[:150], num_results=5)
         
         best_url, max_sim = "No source found", 0
         input_vec = self.vectorizer.transform([clean_input])
@@ -66,9 +68,9 @@ class WSAAnalyzer:
 
         return {
             "ratio_data": {
-                "style_change_ratio": float(style_ratio),
+                "style_change_ratio": style_ratio,
                 "matched_url": final_url,
-                "similarity_score": float(round(max_sim * 100, 2)),
+                "similarity_score": round(max_sim * 100, 2),
                 "sentence_map": sentence_map
             }
         }
