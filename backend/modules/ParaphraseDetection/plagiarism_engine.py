@@ -70,7 +70,7 @@ def check_paraphrase_pair(source_sentence, student_sentence):
 def process_single_url(url, input_sentences):
     """
     PARALLEL WORKER: Processes a single website against all input sentences.
-    Limits scan to the top 100 sentences per page for performance optimization.
+    
     """
     try:
         web_raw_content = scrape_url_content(url)

@@ -13,11 +13,11 @@ export default function Home({ sidebarOpen, setSidebarOpen }) {
             <h1 className="hero-title">
               <span className="highlight">Sinhala</span> Plagiarism Checker now
               <br />
-              Enhanced with <span className="ai-highlight">AI Content Detector</span>
+              Enhanced with <span className="ai-highlight"> Content Detector</span>
             </h1>
             
             <p className="hero-description">
-              Our advanced plagiarism checker verifies against internet sources, academic databases and AI-generated content to give you the most comprehensive plagiarism detection.
+              Hey our advanced plagiarism checker verifies against internet sources, academic databases and Sinhala content to give you the most comprehensive plagiarism detection.
             </p>
 
             <a href="#/paraphrase" className="btn-check-now">Check Now</a>
