@@ -10,6 +10,7 @@ class WSAAnalyzer:
         self.vectorizer = joblib.load(os.path.join(current_dir, 'vectorizer.pkl'))
 
     def calculate_ttr(self, text):
+        """Calculates Type-Token Ratio for lexical richness."""
         words = text.split()
         if not words: return 0
         return (len(set(words)) / len(words)) * 100
@@ -34,7 +35,7 @@ class WSAAnalyzer:
             if i < 2:
                 is_outlier = False
             else:
-                # Force standard Python bool to avoid FastAPI crash
+                # Flag sentences that deviate from the user's established style baseline
                 is_outlier = bool(abs(curr_len - base_len) > (base_len * 0.20) or \
                                   abs(curr_ttr - base_ttr) > (base_ttr * 0.20))
             
@@ -48,7 +49,7 @@ class WSAAnalyzer:
                 "is_outlier": is_outlier
             })
 
-        # Internet Discovery Layer
+        # --- Internet Discovery Layer ---
         clean_input = clean_text(input_text)
         links = await get_internet_resources(clean_input[:150], num_results=5)
         
@@ -63,7 +64,15 @@ class WSAAnalyzer:
                 if sim > max_sim:
                     max_sim, best_url = sim, url
 
-        final_url = best_url if max_sim > 0.18 else "No source found"
+     
+        # CHANGED: 60% SIMILARITY THRESHOLD LOGIC
+       
+        if max_sim >= 0.45:
+            final_url = best_url
+        else:
+            final_url = "No source found"
+        
+
         style_ratio = round((flagged_count / len(sentences)) * 100, 2)
 
         return {

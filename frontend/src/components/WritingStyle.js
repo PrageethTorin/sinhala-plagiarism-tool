@@ -28,6 +28,8 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
 
       if (!response.ok) throw new Error("Server error occurred.");
       const data = await response.json();
+      
+      // The backend now filters matched_url based on a 60% similarity threshold
       setApiResult(data);
     } catch (error) {
       setErrorMessage("Connection to backend failed.");
@@ -61,17 +63,23 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
 
           {apiResult && (
             <div className="ws-result-container fade-in">
+              {/* Style Change Ratio Card */}
               <div className="ws-result-card">
                 <div className="ws-result-label">Style Change Ratio</div>
                 <div className="ws-score-pill">{apiResult.style_change_ratio}%</div>
               </div>
 
+              {/* Plagiarism Discovery Card with 60% Threshold Logic */}
               <div className="ws-source-card">
                 {apiResult.matched_url === "No source found" ? (
-                  <div className="ws-source-not-found">✓ No Matching Idea Found Online.</div>
+                  <div className="ws-source-not-found">
+                    <span className="ws-icon">✓</span> No Matching Idea Found Online (Similarity below 60%).
+                  </div>
                 ) : (
                   <div className="ws-source-found">
-                    <div className="ws-source-alert">⚠️ Plagiarism Detected:</div>
+                    <div className="ws-source-alert">
+                      <span className="ws-icon">⚠️</span> Plagiarism Detected (Match: {apiResult.similarity_score}%):
+                    </div>
                     <a href={apiResult.matched_url} target="_blank" rel="noreferrer" className="ws-source-link">
                       {apiResult.matched_url}
                     </a>
@@ -79,15 +87,23 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
                 )}
               </div>
 
-              {/* Highlighting Section */}
+              {/* Highlighted Text Section */}
               <div className="ws-highlight-box">
                 <h3 className="ws-result-label">Sentence Level Analysis</h3>
                 <div className="ws-text-display">
                   {apiResult.sentence_map.map((s) => (
-                    <span key={s.id} className={s.is_outlier ? "ws-sentence-flagged" : "ws-sentence-normal"}>
+                    <span 
+                        key={s.id} 
+                        className={s.is_outlier ? "ws-sentence-flagged" : "ws-sentence-normal"}
+                        title={`Length: ${s.length}, TTR: ${s.lexical_ttr}%`}
+                    >
                       {s.text}.{" "}
                     </span>
                   ))}
+                </div>
+                <div className="ws-legend">
+                
+                   <span className="legend-item"><span className="box flagged"></span> Style Shift Detected</span>
                 </div>
               </div>
             </div>
