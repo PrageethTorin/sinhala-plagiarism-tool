@@ -1,60 +1,137 @@
 ﻿import trafilatura
-import re
-import urllib3
-import time
+
 from ddgs import DDGS
+
 from playwright.sync_api import sync_playwright
 
-# Suppress SSL warnings for local/educational sites
+import urllib3
+
+
+
+# Suppress SSL/InsecureRequest warnings common on .gov.lk websites
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-def get_internet_resources(query_text, num_results=10):
+
+
+def get_internet_resources(query_text, num_results=7):
+
+    """
+
+    DISCOVERY LAYER: Identifies the top qualified URLs for the search tokens.
+
+    Filters out non-text files to bridge the 'discovery vacuum'.
+
+    """
+
     links = []
+
+    print(f"📡 [Discovery] Searching for: {query_text}")
+
     try:
+
         with DDGS() as ddgs:
-            # Fetch 15 to filter out PDFs and keep the best 10
+
+            # Fetch extra results to allow for filtering (max_results=15)
+
             search_results = ddgs.text(query_text, max_results=15, region='lk')
-        
+
+       
+
         for result in search_results:
+
             url = result['href']
+
+            # Only accept URLs that are not PDFs to ensure text extraction compatibility
+
             if not url.lower().endswith(".pdf"):
+
                 links.append(url)
-            if len(links) >= num_results: break
+
+                print(f"🔗 [Qualified Source] {url}")
+
+               
+
+            # Stop once we have reached the requirement of 7 websites
+
+            if len(links) >= num_results:
+
+                break
+
     except Exception as e:
-        print(f"⚠️ Search Discovery Error: {str(e)}")
+
+        print(f"⚠️ Discovery Phase Error: {str(e)}")
+
     return links
 
-def scrape_url_content(url, retries=2):
-    """
-    Resilient scraper with User-Agent spoofing and retry logic.
-    """
-    for attempt in range(retries):
-        try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                context = browser.new_context(
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-                    ignore_https_errors=True
-                )
-                page = context.new_page()
-                
-                # Navigation: 'load' is safer for heavy academic sites
-                page.goto(url, timeout=35000, wait_until="load") 
-                html_content = page.content()
-                browser.close()
 
-            # Extraction: Preserves tables/text while removing boilerplates
-            extracted_text = trafilatura.extract(html_content, include_comments=False, include_tables=True)
-            
-            if extracted_text:
-                # Clean whitespace but keep punctuation for the sentence splitter
-                cleaned = re.sub(r'\s+', ' ', extracted_text)
-                return cleaned.strip()
-            return ""
 
-        except Exception as e:
-            print(f"❌ Attempt {attempt+1} failed for {url[:40]}: {str(e)[:50]}")
-            if attempt < retries - 1:
-                time.sleep(2) 
-            else:
-                return ""
+def scrape_url_content(url):
+
+    """
+
+    HYBRID SCRAPER: Combines JavaScript rendering with precision text extraction.
+
+    Ensures 'reliable results' by removing boilerplate noise.
+
+    """
+
+    try:
+
+        # 1. DYNAMIC RENDERING: Use Playwright to execute JavaScript
+
+        with sync_playwright() as p:
+
+            # Launch a headless browser (Chromium) to mimic a real user
+
+            browser = p.chromium.launch(headless=True)
+
+            # Create a context that bypasses SSL certificate verification errors
+
+            context = browser.new_context(ignore_https_errors=True)
+
+            page = context.new_page()
+
+           
+
+            # Navigate to the site and wait for the core DOM to load
+
+            # A 30s timeout handles slow international or local servers
+
+            page.goto(url, timeout=30000, wait_until="domcontentloaded")
+
+           
+
+            # Capture the fully rendered HTML (including JS-injected content)
+
+            html_content = page.content()
+
+            browser.close()
+
+
+
+        # 2. SIGNAL EXTRACTION: Use Trafilatura to isolate main content
+
+        # This removes headers, sidebars, and footers automatically
+
+        extracted_text = trafilatura.extract(html_content, include_comments=False,
+
+                                            include_tables=True, no_fallback=False)
+
+       
+
+        if extracted_text:
+
+            # Clean text by removing newlines to support clean sentence-wise analysis
+
+            return extracted_text.replace('\n', ' ').strip()
+
+        return ""
+
+
+
+    except Exception as e:
+
+        print(f"❌ Scraper Error for {url}: {e}")
+
+        return ""
