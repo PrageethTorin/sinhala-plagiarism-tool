@@ -17,7 +17,7 @@ export default function Home({ sidebarOpen, setSidebarOpen }) {
             </h1>
             
             <p className="hero-description">
-              our advanced plagiarism checker verifies against internet sources, academic databases and Sinhala content to give you the most comprehensive plagiarism detection.
+              Hey our advanced plagiarism checker verifies against internet sources, academic databases and Sinhala content to give you the most comprehensive plagiarism detection.
             </p>
 
             <a href="#/paraphrase" className="btn-check-now">Check Now</a>
