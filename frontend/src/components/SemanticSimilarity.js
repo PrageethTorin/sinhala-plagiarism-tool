@@ -3,6 +3,8 @@ import NavBar from './NavBar';
 import Sidebar from './Sidebar';
 import './SemanticSimilarity.css';
 import axios from 'axios';
+import HighlightedText, { HighlightLegend } from './HighlightedText';
+import './HighlightedText.css';
 
 export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
   // Tab state
@@ -11,21 +13,19 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
   // Paragraph comparison state
   const [originalText, setOriginalText] = useState('');
   const [suspiciousText, setSuspiciousText] = useState('');
-  const [threshold, setThreshold] = useState(0.7);
-  const [algorithm, setAlgorithm] = useState('hybrid');
-  const [checkParaphrase, setCheckParaphrase] = useState(false);
+  const [threshold] = useState(0.7);
   const [mainLoading, setMainLoading] = useState(false);
   const [result, setResult] = useState(null);
 
-  // Web corpus state
-  const [webText, setWebText] = useState('');
-  const [webLoading, setWebLoading] = useState(false);
-  const [webResult, setWebResult] = useState(null);
+  // Semantic word highlighting state (NEW)
+  const [highlightData, setHighlightData] = useState(null);
+  const [highlightLoading, setHighlightLoading] = useState(false);
+  const [showHighlights, setShowHighlights] = useState(true);
 
-  // Google search state
-  const [googleText, setGoogleText] = useState('');
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [googleResult, setGoogleResult] = useState(null);
+  // Enhanced web search state (DuckDuckGo + Playwright - FREE, no API limits)
+  const [enhancedText, setEnhancedText] = useState('');
+  const [enhancedLoading, setEnhancedLoading] = useState(false);
+  const [enhancedResult, setEnhancedResult] = useState(null);
 
   // Shared state
   const [error, setError] = useState('');
@@ -44,17 +44,20 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     setResult(null);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/check-plagiarism`, {
+      // Use approved hybrid endpoint (correct methodology)
+      const response = await axios.post(`${API_BASE_URL}/api/supervisor-hybrid`, {
         text_pair: {
           original: originalText,
           suspicious: suspiciousText
         },
-        threshold: threshold,
-        algorithm: algorithm,
-        check_paraphrase: checkParaphrase
+        threshold: threshold
       });
 
       setResult(response.data);
+
+      // Automatically fetch word-level highlights after similarity check
+      fetchHighlights(originalText, suspiciousText);
+
     } catch (error) {
       console.error('API Error:', error);
       if (error.response) {
@@ -69,60 +72,63 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     }
   };
 
-  // ==================== WEB CORPUS CHECK ====================
-  const handleWebCheck = async () => {
-    if (!webText.trim()) {
-      setError("Please enter text for web corpus check");
-      return;
-    }
+  // ==================== SEMANTIC WORD HIGHLIGHTING (NEW) ====================
+  const fetchHighlights = async (original, suspicious) => {
+    if (!original.trim() || !suspicious.trim()) return;
 
-    setWebLoading(true);
-    setError("");
-    setWebResult(null);
+    setHighlightLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/web-corpus-check`, {
-        text_pair: {
-          original: webText,
-          suspicious: ""
-        }
+      const response = await axios.post(`${API_BASE_URL}/api/highlight-matches`, {
+        original: original,
+        suspicious: suspicious,
+        threshold: 0.4  // Lower threshold to show more word matches
       });
 
-      setWebResult(response.data);
-    } catch (err) {
-      console.error(err);
-      setError("Web corpus similarity check failed");
+      setHighlightData(response.data);
+    } catch (error) {
+      console.error('Highlight API Error:', error);
+      // Don't show error for highlights - they're optional
+      setHighlightData(null);
     } finally {
-      setWebLoading(false);
+      setHighlightLoading(false);
     }
   };
 
-  // ==================== GOOGLE WEB SEARCH ====================
-  const handleGoogleSearch = async () => {
-    if (!googleText.trim()) {
-      setError("Please enter text for Google search");
+  // ==================== ENHANCED WEB SEARCH (FREE) ====================
+  const handleEnhancedSearch = async () => {
+    if (!enhancedText.trim()) {
+      setError("Please enter text for web search");
       return;
     }
 
-    setGoogleLoading(true);
+    setEnhancedLoading(true);
     setError("");
-    setGoogleResult(null);
+    setEnhancedResult(null);
 
     try {
-
-      const response = await axios.post(`${API_BASE_URL}/api/web-search-check`, {
+      const response = await axios.post(`${API_BASE_URL}/api/enhanced-web-check`, {
         text_pair: {
-          original: googleText,
+          original: enhancedText,
           suspicious: ""
-        }
+        },
+        threshold: 0.3  // Lower threshold to show more matches
       });
 
-      setGoogleResult(response.data);
+      setEnhancedResult(response.data);
     } catch (err) {
       console.error(err);
-      setError("Google web search failed. Please check API configuration.");
+      if (err.response) {
+        // Server responded with error
+        setError(`Server error: ${err.response.data?.detail || err.response.data?.error || JSON.stringify(err.response.data)}`);
+      } else if (err.request) {
+        // No response received
+        setError("Cannot connect to server. Make sure backend is running on port 8000.");
+      } else {
+        setError(`Error: ${err.message}`);
+      }
     } finally {
-      setGoogleLoading(false);
+      setEnhancedLoading(false);
     }
   };
 
@@ -140,15 +146,11 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
   const handleClear = () => {
     setOriginalText("");
     setSuspiciousText("");
-    setWebText("");
-    setGoogleText("");
+    setEnhancedText("");
     setResult(null);
-    setWebResult(null);
-    setGoogleResult(null);
+    setEnhancedResult(null);
+    setHighlightData(null);
     setError("");
-    setThreshold(0.7);
-    setAlgorithm('hybrid');
-    setCheckParaphrase(false);
   };
 
   const handleFileUpload = async (e, textType) => {
@@ -209,21 +211,15 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
               onClick={() => setActiveTab('paragraph')}
             >
               <span className="tab-icon">📝</span>
-              <span className="tab-text">Paragraph Comparison</span>
+              <span className="tab-text">Semantic Similarity (Comparison)</span>
             </button>
             <button
-              className={`tab-btn ${activeTab === 'corpus' ? 'active' : ''}`}
-              onClick={() => setActiveTab('corpus')}
-            >
-              <span className="tab-icon">📚</span>
-              <span className="tab-text">Web Corpus Search</span>
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'google' ? 'active' : ''}`}
-              onClick={() => setActiveTab('google')}
+              className={`tab-btn ${activeTab === 'enhanced' ? 'active' : ''}`}
+              onClick={() => setActiveTab('enhanced')}
             >
               <span className="tab-icon">🌐</span>
-              <span className="tab-text">Google Web Search</span>
+              <span className="tab-text">Semantic Similarity (Web Search)</span>
+          
             </button>
           </div>
 
@@ -233,10 +229,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
             {/* ========== PARAGRAPH COMPARISON TAB ========== */}
             {activeTab === 'paragraph' && (
               <div className="tab-panel">
-                <p className="tab-description">
-                  Compare two Sinhala texts directly to detect plagiarism or paraphrasing.
-                </p>
-
                 {/* Dual Text Input Section */}
                 <div className="dual-input-section">
                   {/* Original Text Card */}
@@ -305,38 +297,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
 
                 {/* Controls Card */}
                 <div className="controls-card">
-                  <div className="controls-grid">
-                    <div className="control-group">
-                      <label className="control-label">Algorithm:</label>
-                      <select
-                        className="control-select"
-                        value={algorithm}
-                        onChange={(e) => setAlgorithm(e.target.value)}
-                      >
-                        <option value="hybrid">Hybrid (Recommended)</option>
-                        <option value="semantic">Semantic Only</option>
-                        <option value="lexical">Lexical Only</option>
-                      </select>
-                    </div>
-
-                
-                    <div className="control-group">
-                      <label className="control-label">Options:</label>
-                      <div className="checkbox-group">
-                        <label className="checkbox-label">
-                          <input
-                            type="checkbox"
-                            checked={checkParaphrase}
-                            onChange={(e) => setCheckParaphrase(e.target.checked)}
-                            className="checkbox-input"
-                          />
-                          <span className="checkbox-custom"></span>
-                          Detect Paraphrasing
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="action-buttons">
                     <button
                       className="primary-action-btn"
@@ -349,7 +309,7 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                           Analyzing...
                         </>
                       ) : (
-                        'Check Plagiarism'
+                        'Detect'
                       )}
                     </button>
                     <button className="secondary-action-btn" onClick={handleExample}>
@@ -383,7 +343,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                           </div>
                         </div>
                       </div>
-
                     </div>
 
                     {/* Progress Bar */}
@@ -394,20 +353,124 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                       ></div>
                     </div>
 
+                    {/* Case Type Badge */}
+                    {result.metadata?.case_type && (
+                      <div className="case-type-section">
+                        <span className={`case-badge ${result.metadata.case_type}`}>
+                          {result.metadata.case_type === 'easy_negative' && '✓ Easy Negative'}
+                          {result.metadata.case_type === 'easy_positive' && '⚠ Easy Positive'}
+                          {result.metadata.case_type === 'difficult' && '🔍 Difficult Case (ML Used)'}
+                        </span>
+                        <span className="method-badge">
+                          {result.metadata.method === 'custom_only' ? 'Custom Algorithm' : 'Hybrid + Fine-tuned Model'}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Component Scores */}
                     {result.components && (
                       <div className="components-section">
-                        <h3 className="section-title">Component Analysis</h3>
+                        <h3 className="section-title">Score Breakdown</h3>
                         <div className="components-grid">
-                          {Object.entries(result.components).map(([key, value]) => (
-                            <div key={key} className="component-item">
-                              <div className="component-name">{key}</div>
-                              <div className="component-value">{(value * 100).toFixed(1)}%</div>
+                          <div className="component-item">
+                            <div className="component-name">Custom Score</div>
+                            <div className="component-desc">(Jaccard + N-grams + Word Order)</div>
+                            <div className="component-value">{(result.components.custom_score * 100).toFixed(1)}%</div>
+                          </div>
+                          {result.components.embedding_score !== undefined && result.components.embedding_score !== null && (
+                            <div className="component-item">
+                              <div className="component-name">Embedding Score</div>
+                              <div className="component-desc">(Fine-tuned MiniLM Model)</div>
+                              <div className="component-value">{(result.components.embedding_score * 100).toFixed(1)}%</div>
                             </div>
-                          ))}
+                          )}
+                          <div className="component-item highlight">
+                            <div className="component-name">Final Score</div>
+                            <div className="component-desc">
+                              {result.metadata?.case_type === 'difficult'
+                                ? '(Custom + Embedding) / 2'
+                                : '(Custom Score Only)'}
+                            </div>
+                            <div className="component-value">{(result.components.final_score * 100).toFixed(1)}%</div>
+                          </div>
                         </div>
                       </div>
                     )}
+
+                    {/* Text Comparison with Inline Highlights */}
+                    <div className="text-comparison-section">
+                      <div className="section-header">
+                        <h3 className="section-title">Text Comparison</h3>
+                        {highlightData && highlightData.highlights && highlightData.highlights.length > 0 && (
+                          <label className="toggle-label">
+                            <input
+                              type="checkbox"
+                              checked={showHighlights}
+                              onChange={(e) => setShowHighlights(e.target.checked)}
+                            />
+                            Word Highlights
+                          </label>
+                        )}
+                      </div>
+
+                      {showHighlights && highlightData && highlightData.highlights && highlightData.highlights.length > 0 && (
+                        <HighlightLegend />
+                      )}
+
+                      <div className="comparison-panels">
+                        {/* Original Text Panel */}
+                        <div className="comparison-panel">
+                          <div className="panel-label">Original Text</div>
+                          <div className="panel-text-content">
+                            {originalText}
+                          </div>
+                        </div>
+
+                        {/* Suspicious Text Panel - with inline highlights */}
+                        <div className="comparison-panel suspicious-panel">
+                          <div className="panel-label">Suspicious Text</div>
+                          <div className="panel-text-content">
+                            {highlightLoading ? (
+                              <div className="highlight-loading-inline">
+                                <span className="loading-spinner"></span>
+                                Analyzing words...
+                              </div>
+                            ) : showHighlights && highlightData && highlightData.highlights && highlightData.highlights.length > 0 ? (
+                              <HighlightedText
+                                text={highlightData.suspicious_text}
+                                highlights={highlightData.highlights}
+                                showTooltips={true}
+                              />
+                            ) : (
+                              suspiciousText
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Compact highlight stats inline */}
+                      {showHighlights && highlightData && highlightData.statistics && (
+                        <div className="inline-highlight-stats">
+                          <span className="inline-stat">
+                            <strong>{highlightData.statistics.matched_words}</strong> of {highlightData.statistics.total_suspicious_words} words matched
+                          </span>
+                          <span className="inline-stat-sep">|</span>
+                          <span className="inline-stat">
+                            Avg: <strong>{(highlightData.statistics.average_similarity * 100).toFixed(1)}%</strong>
+                          </span>
+                          <span className="inline-stat-sep">|</span>
+                          <span className="inline-stat high-stat">
+                            {highlightData.statistics.high_similarity_count} high
+                          </span>
+                          <span className="inline-stat medium-stat">
+                            {highlightData.statistics.medium_similarity_count} med
+                          </span>
+                          <span className="inline-stat low-stat">
+                            {highlightData.statistics.low_similarity_count} low
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Matched Sections */}
                     {result.matches && result.matches.length > 0 && (
@@ -461,370 +524,225 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
               </div>
             )}
 
-            {/* ========== WEB CORPUS TAB ========== */}
-            {activeTab === 'corpus' && (
+            {/* ========== ENHANCED WEB SEARCH TAB ========== */}
+            {activeTab === 'enhanced' && (
               <div className="tab-panel">
-                <p className="tab-description">
-                  Check your text against our indexed Sinhala Wikipedia corpus (2,807 documents).
-                  Uses FAISS vector search + hybrid similarity scoring.
-                </p>
-
                 <div className="text-card single-input">
                   <div className="card-header">
-                    <span className="card-title">Text to Check</span>
+                    <span className="card-title">Suspicious Text to Check</span>
                   </div>
                   <textarea
                     className="text-input"
                     rows={8}
-                    value={webText}
-                    onChange={(e) => setWebText(e.target.value)}
-                    placeholder="Enter Sinhala paragraph to check against web corpus..."
+                    value={enhancedText}
+                    onChange={(e) => setEnhancedText(e.target.value)}
+                    placeholder="Enter only the suspicious text - we'll find the original source from the web..."
                   />
                   <div className="char-counter">
-                    {webText.length} characters
+                    {enhancedText.length} characters
                   </div>
                 </div>
 
                 <div className="action-buttons centered">
                   <button
                     className="primary-action-btn"
-                    onClick={handleWebCheck}
-                    disabled={webLoading}
+                    onClick={handleEnhancedSearch}
+                    disabled={enhancedLoading}
                   >
-                    {webLoading ? (
+                    {enhancedLoading ? (
                       <>
                         <span className="loading-spinner"></span>
-                        Searching Corpus...
+                        Searching...
                       </>
                     ) : (
-                      'Search Web Corpus'
+                      'Detect'
                     )}
                   </button>
                   <button
                     className="secondary-action-btn"
-                    onClick={() => { setWebText(''); setWebResult(null); }}
+                    onClick={() => { setEnhancedText(''); setEnhancedResult(null); }}
                   >
                     Clear
                   </button>
                 </div>
 
-                {/* Web Corpus Results */}
-                {webResult && (
+                {/* Enhanced Search Results */}
+                {enhancedResult && (
                   <div className="results-container">
-                    <h3 className="section-title">Corpus Search Results</h3>
-
-                    {/* Summary */}
-                    {webResult.summary && (
-                      <div className="overall-score-section">
-                        <div className="score-circle-container">
-                          <div
-                            className="score-circle"
-                            style={{
-                              background: `conic-gradient(
-                                ${getScoreColor(webResult.summary.average_similarity)} ${webResult.summary.average_similarity * 360}deg,
-                                #3a3546 ${webResult.summary.average_similarity * 360}deg
-                              )`
-                            }}
-                          >
-                            <div className="score-inner">
-                              <span className="score-percent">
-                                {(webResult.summary.average_similarity * 100).toFixed(1)}%
-                              </span>
-                              <span className="score-label">Avg. Similarity</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="verdict-section">
-                          <div className="stats-grid">
-                            <div className="stat-item">
-                              <span className="stat-value">{webResult.summary.sources_checked}</span>
-                              <span className="stat-label">Sources Checked</span>
-                            </div>
-                            <div className="stat-item">
-                              <span className="stat-value">{webResult.summary.matches_found}</span>
-                              <span className="stat-label">Matches Found</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Matches */}
-                    {webResult.matches && webResult.matches.length > 0 && (
-                      <div className="matches-section">
-                        <h4 className="section-subtitle">Top Matches</h4>
-                        <div className="matches-list">
-                          {webResult.matches.map((match, index) => (
-                            <div key={index} className="match-item corpus-match">
-                              <div className="match-content">
-                                <div className="match-text-preview">
-                                  {match.matched_text && match.matched_text.length > 300
-                                    ? match.matched_text.substring(0, 300) + '...'
-                                    : match.matched_text || 'N/A'}
-                                </div>
-                                <div className="match-meta">
-                                  <span className={`case-badge ${match.case_type}`}>
-                                    {match.case_type || 'unknown'}
-                                  </span>
-                                  {match.custom_score && (
-                                    <span className="score-detail">
-                                      Custom: {(match.custom_score * 100).toFixed(1)}%
-                                    </span>
-                                  )}
-                                  {match.embedding_score && (
-                                    <span className="score-detail">
-                                      Embedding: {(match.embedding_score * 100).toFixed(1)}%
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div
-                                className="match-score"
-                                style={{
-                                  color: getScoreColor(match.final_score || 0),
-                                  borderColor: getScoreColor(match.final_score || 0)
-                                }}
-                              >
-                                {((match.final_score || 0) * 100).toFixed(1)}%
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* No matches */}
-                    {webResult.summary && webResult.summary.matches_found === 0 && (
-                      <div className="no-matches-message">
-                        No significant matches found in the corpus.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ========== GOOGLE SEARCH TAB ========== */}
-            {activeTab === 'google' && (
-              <div className="tab-panel">
-                <p className="tab-description">
-                  Search the live web using Google Custom Search API.
-                  Finds similar content from across the internet.
-                </p>
-
-                <div className="text-card single-input">
-                  <div className="card-header">
-                    <span className="card-title">Text to Search</span>
-                  </div>
-                  <textarea
-                    className="text-input"
-                    rows={8}
-                    value={googleText}
-                    onChange={(e) => setGoogleText(e.target.value)}
-                    placeholder="Enter Sinhala paragraph to search on the web..."
-                  />
-                  <div className="char-counter">
-                    {googleText.length} characters
-                  </div>
-                </div>
-
-                <div className="action-buttons centered">
-                  <button
-                    className="primary-action-btn google-btn"
-                    onClick={handleGoogleSearch}
-                    disabled={googleLoading}
-                  >
-                    {googleLoading ? (
-                      <>
-                        <span className="loading-spinner"></span>
-                        Searching Web...
-                      </>
-                    ) : (
-                      'Search Google'
-                    )}
-                  </button>
-                  <button
-                    className="secondary-action-btn"
-                    onClick={() => { setGoogleText(''); setGoogleResult(null); }}
-                  >
-                    Clear
-                  </button>
-                </div>
-
-                {/* Google Search Results */}
-                {googleResult && (
-                  <div className="results-container">
-                    <h3 className="section-title">Google Search Results</h3>
-
-                    {/* Verdict and Summary */}
-                    <div className="overall-score-section">
-                      <div className="score-circle-container">
-                        <div
-                          className="score-circle"
-                          style={{
-                            background: `conic-gradient(
-                              ${getScoreColor(googleResult.max_similarity || 0)} ${(googleResult.max_similarity || 0) * 360}deg,
-                              #3a3546 ${(googleResult.max_similarity || 0) * 360}deg
-                            )`
-                          }}
-                        >
-                          <div className="score-inner">
-                            <span className="score-percent">
-                              {((googleResult.max_similarity || 0) * 100).toFixed(1)}%
-                            </span>
-                            <span className="score-label">Max Similarity</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="verdict-section">
-                        {googleResult.verdict && (
-                          <div className={`verdict-badge ${googleResult.verdict === 'Original' ? 'original' : 'plagiarized'}`}>
-                            {googleResult.verdict}
+                    {enhancedResult.success === false ? (
+                      <div className="error-container">
+                        <h3 className="section-title">Setup Required</h3>
+                        <p>{enhancedResult.error}</p>
+                        {enhancedResult.install_instructions && (
+                          <div className="install-instructions">
+                            <h4>Install dependencies:</h4>
+                            <ol>
+                              {Object.entries(enhancedResult.install_instructions).map(([step, cmd]) => (
+                                <li key={step}><code>{cmd}</code></li>
+                              ))}
+                            </ol>
                           </div>
                         )}
-                        <div className="stats-grid">
-                          <div className="stat-item">
-                            <span className="stat-value">{googleResult.statistics?.sources_checked || 0}</span>
-                            <span className="stat-label">Sources</span>
-                          </div>
-                          <div className="stat-item">
-                            <span className="stat-value">{googleResult.statistics?.paragraphs_checked || 0}</span>
-                            <span className="stat-label">Paragraphs</span>
-                          </div>
-                          <div className="stat-item">
-                            <span className="stat-value">{googleResult.statistics?.sentences_checked || 0}</span>
-                            <span className="stat-label">Sentences</span>
-                          </div>
-                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <>
+                        <h3 className="section-title">Web Search Results</h3>
 
-                    {/* Sentence-Level Matches (ENHANCED) */}
-                    {googleResult.sentence_matches && googleResult.sentence_matches.length > 0 && (
-                      <div className="matches-section sentence-matches-section">
-                        <h4 className="section-subtitle">
-                          Matched Sentences
-                          <span className="match-count-badge">
-                            {googleResult.sentence_matches.length}
-                          </span>
-                        </h4>
-                        <div className="sentence-matches-list">
-                          {googleResult.sentence_matches.map((match, index) => (
-                            <div key={index} className="sentence-match-item">
-                              <div className="sentence-pair">
-                                <div className="sentence-input">
-                                  <span className="sentence-label">Your Text:</span>
-                                  <span className="sentence-text">{match.input_sentence}</span>
-                                </div>
-                                <div className="sentence-arrow">→</div>
-                                <div className="sentence-source">
-                                  <span className="sentence-label">Source:</span>
-                                  <span className="sentence-text">{match.source_sentence}</span>
-                                </div>
-                              </div>
-                              <div className="sentence-meta">
-                                <span
-                                  className="sentence-score"
-                                  style={{ color: getScoreColor(match.similarity_score) }}
-                                >
-                                  {(match.similarity_score * 100).toFixed(1)}%
+                        {/* Verdict and Summary */}
+                        <div className="overall-score-section">
+                          <div className="score-circle-container">
+                            <div
+                              className="score-circle"
+                              style={{
+                                background: `conic-gradient(
+                                  ${getScoreColor(enhancedResult.max_similarity || 0)} ${(enhancedResult.max_similarity || 0) * 360}deg,
+                                  #3a3546 ${(enhancedResult.max_similarity || 0) * 360}deg
+                                )`
+                              }}
+                            >
+                              <div className="score-inner">
+                                <span className="score-percent">
+                                  {((enhancedResult.max_similarity || 0) * 100).toFixed(1)}%
                                 </span>
-                                <span className={`case-badge ${match.case_type}`}>
-                                  {match.case_type}
-                                </span>
-                                {match.source_title && (
-                                  <span className="source-title">{match.source_title}</span>
-                                )}
+                                <span className="score-label">Max Similarity</span>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                          </div>
 
-                    {/* Web Results */}
-                    {googleResult.matches && googleResult.matches.length > 0 && (
-                      <div className="matches-section">
-                        <h4 className="section-subtitle">Source Pages</h4>
-                        <div className="matches-list">
-                          {googleResult.matches.map((match, index) => (
-                            <div key={index} className="match-item web-match">
-                              <div className="match-content">
-                                <div className="match-title">
-                                  {match.source_title || match.title || 'Untitled'}
-                                </div>
-                                <div className="match-text-preview">
-                                  {match.matched_text || match.snippet || 'No preview available'}
-                                </div>
-                                {(match.source_url || match.url) && (
-                                  <a
-                                    href={match.source_url || match.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="match-url"
+                          <div className="verdict-section">
+                            {enhancedResult.verdict && (
+                              <div className={`verdict-badge ${enhancedResult.verdict.includes('Original') ? 'original' : 'plagiarized'}`}>
+                                {enhancedResult.verdict}
+                              </div>
+                            )}
+                            <div className="stats-grid">
+                              <div className="stat-item">
+                                <span className="stat-value">{enhancedResult.statistics?.sources_scraped || 0}</span>
+                                <span className="stat-label">Pages Scraped</span>
+                              </div>
+                              <div className="stat-item">
+                                <span className="stat-value">{enhancedResult.statistics?.paragraphs_checked || 0}</span>
+                                <span className="stat-label">Paragraphs</span>
+                              </div>
+                              <div className="stat-item">
+                                <span className="stat-value">{enhancedResult.statistics?.matches_found || 0}</span>
+                                <span className="stat-label">Matches</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Matches */}
+                        {enhancedResult.matches && enhancedResult.matches.length > 0 && (
+                          <div className="matches-section">
+                            <h4 className="section-subtitle">Matching Sources</h4>
+                            <div className="matches-list">
+                              {enhancedResult.matches.map((match, index) => (
+                                <div key={index} className="match-item web-match">
+                                  <div className="match-content">
+                                    <div className="match-title">
+                                      {match.source_title || 'Web Source'}
+                                    </div>
+                                    <div className="match-text-preview">
+                                      {match.matched_text || 'No preview available'}
+                                    </div>
+                                    {match.source_url && (
+                                      <a
+                                        href={match.source_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="match-url"
+                                      >
+                                        {match.source_url}
+                                      </a>
+                                    )}
+
+                                    {/* Case Type Badge - like paragraph comparison */}
+                                    <div className="case-type-section">
+                                      <span className={`case-badge ${match.case_type}`}>
+                                        {match.case_type === 'easy_negative' && '✓ Easy Negative'}
+                                        {match.case_type === 'easy_positive' && '⚠ Easy Positive'}
+                                        {match.case_type === 'difficult' && '🔍 Difficult Case (ML Used)'}
+                                        {match.case_type === 'paraphrase_detected' && '🔥 Paraphrase Detected!'}
+                                      </span>
+                                      <span className="method-badge">
+                                        {match.method === 'custom_only' && 'Custom Algorithm'}
+                                        {match.method === 'hybrid_fine_tuned' && 'Hybrid + Fine-tuned Model'}
+                                        {match.method === 'embedding_primary' && 'Embedding Model (Semantic)'}
+                                        {match.method === 'both_high' && 'Both Scores High'}
+                                        {match.method === 'embedding_checked' && 'Embedding Verified'}
+                                      </span>
+                                    </div>
+
+                                    {/* Score Breakdown - like paragraph comparison */}
+                                    <div className="components-grid web-scores">
+                                      <div className="component-item">
+                                        <div className="component-name">Custom Score</div>
+                                        <div className="component-desc">(Jaccard + N-grams + Word Order)</div>
+                                        <div className="component-value">{((match.custom_score || 0) * 100).toFixed(1)}%</div>
+                                      </div>
+                                      {match.embedding_score !== undefined && match.embedding_score !== null && (
+                                        <div className="component-item">
+                                          <div className="component-name">Embedding Score</div>
+                                          <div className="component-desc">(Fine-tuned MiniLM Model)</div>
+                                          <div className="component-value">{(match.embedding_score * 100).toFixed(1)}%</div>
+                                        </div>
+                                      )}
+                                      <div className="component-item highlight">
+                                        <div className="component-name">Final Score</div>
+                                        <div className="component-desc">
+                                          {match.case_type === 'difficult'
+                                            ? '(Custom + Embedding) / 2'
+                                            : '(Custom Score Only)'}
+                                        </div>
+                                        <div className="component-value">{((match.similarity_score || 0) * 100).toFixed(1)}%</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div
+                                    className="match-score"
+                                    style={{
+                                      color: getScoreColor(match.similarity_score || 0),
+                                      borderColor: getScoreColor(match.similarity_score || 0)
+                                    }}
                                   >
-                                    {match.source_url || match.url}
-                                  </a>
-                                )}
-                                <div className="match-meta">
-                                  <span className={`case-badge ${match.case_type}`}>
-                                    {match.case_type}
-                                  </span>
-                                  {match.custom_score && (
-                                    <span className="score-detail">
-                                      Custom: {(match.custom_score * 100).toFixed(1)}%
-                                    </span>
-                                  )}
-                                  {match.embedding_score && (
-                                    <span className="score-detail">
-                                      Embedding: {(match.embedding_score * 100).toFixed(1)}%
-                                    </span>
-                                  )}
+                                    {((match.similarity_score || 0) * 100).toFixed(1)}%
+                                  </div>
                                 </div>
-                              </div>
-                              <div
-                                className="match-score"
-                                style={{
-                                  color: getScoreColor(match.similarity_score || 0),
-                                  borderColor: getScoreColor(match.similarity_score || 0)
-                                }}
-                              >
-                                {((match.similarity_score || 0) * 100).toFixed(1)}%
-                              </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Processing Info */}
-                    {googleResult.statistics && (
-                      <div className="metadata-section">
-                        <div className="metadata-item">
-                          <span className="metadata-label">Processing Time:</span>
-                          <span className="metadata-value">
-                            {googleResult.statistics.processing_time?.toFixed(2) || '0.00'}s
-                          </span>
-                        </div>
-                        {googleResult.metadata?.enhancement && (
-                          <div className="metadata-item">
-                            <span className="metadata-label">Enhancement:</span>
-                            <span className="metadata-value enhancement-badge">
-                              {googleResult.metadata.enhancement}
-                            </span>
                           </div>
                         )}
-                      </div>
-                    )}
 
-                    {/* No results */}
-                    {(!googleResult.matches || googleResult.matches.length === 0) &&
-                     (!googleResult.sentence_matches || googleResult.sentence_matches.length === 0) && (
-                      <div className="no-matches-message">
-                        No matches found on the web.
-                      </div>
+                        {/* Metadata */}
+                        <div className="metadata-section">
+                          <div className="metadata-item">
+                            <span className="metadata-label">Processing Time:</span>
+                            <span className="metadata-value">
+                              {enhancedResult.processing_time?.toFixed(2) || enhancedResult.statistics?.processing_time_seconds?.toFixed(2) || '0.00'}s
+                            </span>
+                          </div>
+                          {enhancedResult.metadata && (
+                            <>
+                              <div className="metadata-item">
+                                <span className="metadata-label">Search Engine:</span>
+                                <span className="metadata-value">{enhancedResult.metadata.search_engine}</span>
+                              </div>
+                              <div className="metadata-item">
+                                <span className="metadata-label">Scraper:</span>
+                                <span className="metadata-value">{enhancedResult.metadata.scraper}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* No matches */}
+                        {(!enhancedResult.matches || enhancedResult.matches.length === 0) && (
+                          <div className="no-matches-message">
+                            No similar content found on the web. The text appears to be original.
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

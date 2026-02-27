@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './Sidebar.css';
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
-  const [activeItem, setActiveItem] = useState('#/paraphrase');
+  const [activeItem, setActiveItem] = useState('#/writing-style-2');
 
   useEffect(() => {
     const updateActive = () => {
@@ -31,45 +31,12 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
         <nav className="sidebar-menu">
 
           <a
-            href="#/paraphrase"
-
-            className={`sidebar-item ${activeItem === '#/paraphrase' ? 'sidebar-active' : ''}`}
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="sidebar-icon">📄</span>
-            <span>Paraphrase Detection</span>
-          </a>
-
-          <a
-            href="#/writing-style-1"
-
-            className={`sidebar-item ${activeItem === '#/writing-style-1' ? 'sidebar-active' : ''}`}
-
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="sidebar-icon">✍️</span>
-            <span>Writing Style</span>
-          </a>
-
-          <a
             href="#/writing-style-2"
-
             className={`sidebar-item ${activeItem === '#/writing-style-2' ? 'sidebar-active' : ''}`}
-
             onClick={() => setSidebarOpen(false)}
           >
             <span className="sidebar-icon">🔍</span>
             <span>Semantic Similarity</span>
-          </a>
-
-          <a
-            href="#/pretrained"
-
-            className={`sidebar-item ${activeItem === '#/pretrained' ? 'sidebar-active' : ''}`}
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="sidebar-icon">🤖</span>
-            <span>Plagiarism Check</span>
           </a>
 
         </nav>
