@@ -1,5 +1,5 @@
 """
-authentication
+Pydantic schemas for authentication
 """
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional

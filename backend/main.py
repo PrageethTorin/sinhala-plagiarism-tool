@@ -17,6 +17,13 @@ except ImportError:
 # Import from your existing semantic_similarity module
 from modules.semantic_similarity.routes import router as semantic_router
 
+# Import authentication router
+try:
+    from auth.routes import router as auth_router
+    AUTH_AVAILABLE = True
+except ImportError:
+    AUTH_AVAILABLE = False
+    print("Auth module not available")
 
 # Import database configuration
 try:
@@ -40,7 +47,14 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,6 +62,10 @@ app.add_middleware(
 
 # Include your existing semantic similarity router
 app.include_router(semantic_router, prefix="/api")
+
+# Include authentication router
+if AUTH_AVAILABLE:
+    app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 
 
 @app.on_event("startup")
@@ -76,6 +94,7 @@ async def root():
         "version": "1.0.0",
         "google_api_configured": google_configured,
         "database_status": db_status.get("status", "unknown"),
+        "auth_available": AUTH_AVAILABLE,
         "endpoints": {
             "check_plagiarism": "POST /api/check-plagiarism",
             "supervisor_hybrid": "POST /api/supervisor-hybrid",
@@ -86,6 +105,10 @@ async def root():
             "statistics": "GET /api/statistics",
             "health": "GET /api/health",
             "algorithms": "GET /api/algorithms",
+            "auth_register": "POST /api/auth/register",
+            "auth_login": "POST /api/auth/login",
+            "auth_google": "POST /api/auth/google",
+            "auth_me": "GET /api/auth/me",
             "docs": "GET /docs"
         }
     }

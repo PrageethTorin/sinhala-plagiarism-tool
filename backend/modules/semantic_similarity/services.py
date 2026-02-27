@@ -50,33 +50,32 @@ class SinhalaTextProcessor:
         if not text:
             return ""
         
-        # Remove extra whitespace and newlines
+        
         text = ' '.join(text.split())
         
-        # Extract Sinhala characters only
+        
         sinhala_text = ' '.join(self.sinhala_pattern.findall(text))
         
-        # Remove punctuation (Sinhala and English)
+       
         sinhala_text = re.sub(r'[^\u0D80-\u0DFF\s]', '', sinhala_text)
         
-        # Normalize multiple spaces
+       
         sinhala_text = ' '.join(sinhala_text.split())
         
         return sinhala_text
     
     def tokenize_words(self, text: str) -> List[str]:
         """Tokenize Sinhala text into words"""
-        # Split by whitespace and remove empty tokens
+        
         tokens = [token for token in text.split() if token]
         
-        # Remove stopwords
+        
         tokens = [token for token in tokens if token not in self.sinhala_stopwords]
         
         return tokens
     
     def tokenize_sentences(self, text: str) -> List[str]:
         """Tokenize Sinhala text into sentences"""
-        # Simple sentence splitting for Sinhala
         sentences = re.split(r'[.!?]+', text)
         sentences = [s.strip() for s in sentences if s.strip()]
         return sentences
@@ -99,7 +98,7 @@ class SimilarityDetector:
     def calculate_similarity(self, text1: str, text2: str, algorithm: str = "hybrid") -> Dict:
         """Calculate similarity between two Sinhala texts"""
         
-        # Preprocess texts
+     
         processed1 = self.text_processor.preprocess(text1)
         processed2 = self.text_processor.preprocess(text2)
         
@@ -119,11 +118,11 @@ class SimilarityDetector:
         tokens1 = self.text_processor.tokenize_words(processed1)
         tokens2 = self.text_processor.tokenize_words(processed2)
         
-        # Calculate different similarity metrics
+       
         semantic_score = self._semantic_similarity(processed1, processed2)
         lexical_score = self._lexical_similarity(' '.join(tokens1), ' '.join(tokens2))
         
-        # Improved structural similarity
+      
         structural_score = self._structural_similarity(text1, text2, tokens1, tokens2)
         
         # N-gram similarity with multiple n values
@@ -147,10 +146,9 @@ class SimilarityDetector:
                 0.1 * word_overlap
             )
         
-        # Ensure score is between 0 and 1
         final_score = max(0.0, min(1.0, final_score))
         
-        # Extract matching segments
+        
         matches = self._find_matches(text1, text2)
         
         return {
@@ -185,13 +183,13 @@ class SimilarityDetector:
             score = self._ngram_similarity(text1, text2, n)
             ngram_scores.append(score)
         
-        # Weighted average (trigrams are more important)
+        
         return (0.2 * ngram_scores[0] + 0.3 * ngram_scores[1] + 0.5 * ngram_scores[2])
     
     def _structural_similarity(self, text1: str, text2: str, tokens1: List[str], tokens2: List[str]) -> float:
         """Calculate structural similarity"""
         
-        # Sentence count similarity
+       
         sentences1 = self.text_processor.tokenize_sentences(text1)
         sentences2 = self.text_processor.tokenize_sentences(text2)
         
@@ -200,7 +198,7 @@ class SimilarityDetector:
         
         sentence_count_sim = 1 - abs(len(sentences1) - len(sentences2)) / max(len(sentences1), len(sentences2))
         
-        # Average sentence length similarity
+       
         avg_len1 = sum(len(s) for s in sentences1) / len(sentences1)
         avg_len2 = sum(len(s) for s in sentences2) / len(sentences2)
         
@@ -209,7 +207,7 @@ class SimilarityDetector:
         else:
             avg_len_sim = 1 - abs(avg_len1 - avg_len2) / max(avg_len1, avg_len2)
         
-        # Word length distribution
+       
         word_len1 = sum(len(w) for w in tokens1) / len(tokens1) if tokens1 else 0
         word_len2 = sum(len(w) for w in tokens2) / len(tokens2) if tokens2 else 0
         
@@ -218,7 +216,7 @@ class SimilarityDetector:
         else:
             word_len_sim = 1 - abs(word_len1 - word_len2) / max(word_len1, word_len2)
         
-        # Combine structural features
+        
         return (0.4 * sentence_count_sim + 0.4 * avg_len_sim + 0.2 * word_len_sim)
     
     def _semantic_similarity(self, text1: str, text2: str) -> float:
@@ -237,7 +235,7 @@ class SimilarityDetector:
         try:
             return jellyfish.jaro_winkler_similarity(text1, text2)
         except:
-            # Fallback to simpler similarity if Jaro-Winkler fails
+            
             return self._simple_string_similarity(text1, text2)
     
     def _simple_string_similarity(self, text1: str, text2: str) -> float:
@@ -245,7 +243,7 @@ class SimilarityDetector:
         if not text1 or not text2:
             return 0.0
         
-        # Count matching characters
+       
         set1 = set(text1)
         set2 = set(text2)
         intersection = len(set1.intersection(set2))
@@ -277,11 +275,11 @@ class SimilarityDetector:
         """Find matching segments between texts"""
         matches = []
         
-        # Use sentence tokenization
+        
         sentences1 = self.text_processor.tokenize_sentences(text1)
         sentences2 = self.text_processor.tokenize_sentences(text2)
         
-        # Limit comparisons for performance
+        
         for i, sent1 in enumerate(sentences1[:10]):
             sent1 = sent1.strip()
             if not sent1 or len(sent1) < 10:
@@ -309,7 +307,7 @@ class SimilarityDetector:
             if best_match:
                 matches.append(best_match)
         
-        # Sort matches by similarity score (highest first)
+        
         matches.sort(key=lambda x: x["similarity_score"], reverse=True)
         
         return matches[:8]  # Return top 8 matches
@@ -363,10 +361,10 @@ class FileHandler:
 HUGGINGFACE_REPO_ID = "sandalidahanayake/sinhala-plagiarism-model"
 
 def download_model_from_huggingface(model_path: str, repo_id: str = HUGGINGFACE_REPO_ID) -> bool:
-    """
-    Download the fine-tuned model from HuggingFace Hub if not exists locally.
-    Returns True if model is ready, False if download failed.
-    """
+    
+    #Download the fine-tuned model from HuggingFace Hub if not exists locally.
+    #Returns True if model is ready, False if download failed.
+    
     if os.path.exists(model_path) and os.path.exists(os.path.join(model_path, "config.json")):
         return True  # Model already exists
 
@@ -399,12 +397,10 @@ def download_model_from_huggingface(model_path: str, repo_id: str = HUGGINGFACE_
 
 
 class FineTunedEmbeddingService:
-    """
-    Uses the fine-tuned XLM-R model to compute semantic similarity
-    for difficult cases.
+    
+    #Uses the fine-tuned XLM-R model to compute semantic similarity
+    #for difficult cases.
 
-    Model is automatically downloaded from HuggingFace Hub if not found locally.
-    """
 
     def __init__(self):
         base_dir = os.path.dirname(__file__)

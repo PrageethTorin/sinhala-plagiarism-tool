@@ -6,7 +6,7 @@ import time
 import logging
 from typing import Dict, Optional
 
-from .schemas import SimilarityRequest, SimilarityResult, TextPair
+from .schemas import SimilarityRequest, SimilarityResult, TextPair, HighlightRequest, HighlightResponse, HighlightStatistics
 from .services import SimilarityDetector, FileHandler
 from .approved_hybrid import ApprovedHybridDetector
 
@@ -23,6 +23,13 @@ try:
 except ImportError:
     WEB_SEARCH_AVAILABLE = False
 
+# Enhanced web scraper (DuckDuckGo + Playwright + Trafilatura) - FREE, no API limits
+try:
+    from .web.enhanced_web_scraper import EnhancedWebPlagiarismChecker, check_dependencies
+    ENHANCED_SCRAPER_AVAILABLE = True
+except ImportError:
+    ENHANCED_SCRAPER_AVAILABLE = False
+
 # Optional database import
 try:
     from database.db_config import save_check, get_history, get_statistics, db_health_check
@@ -30,15 +37,31 @@ try:
 except ImportError:
     DB_AVAILABLE = False
 
+# Semantic word highlighting service
+try:
+    from .highlight_service import get_highlight_service
+    HIGHLIGHT_SERVICE_AVAILABLE = True
+except ImportError:
+    HIGHLIGHT_SERVICE_AVAILABLE = False
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Initialize services
+# Initialize services (loaded once at startup)
+# Initialize hybrid detector ONCE at startup
+try:
+    hybrid_detector = ApprovedHybridDetector()
+    logger.info("Hybrid detector initialized")
+except Exception as e:
+    hybrid_detector = None
+    logger.warning(f"Failed to init hybrid detector: {e}")
+
+# Other services
 similarity_detector = SimilarityDetector()
 file_handler = FileHandler()
 
 
-# STANDARD PLAGIARISM CHECK 
+# STANDARD PLAGIARISM CHECK
 
 
 @router.post("/check-plagiarism", response_model=SimilarityResult)
@@ -85,7 +108,7 @@ async def check_plagiarism(request: SimilarityRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-#  HYBRID ENDPOINT 
+#  HYBRID ENDPOINT
 
 
 @router.post("/supervisor-hybrid")
@@ -93,7 +116,9 @@ async def supervisor_hybrid_check(request: SimilarityRequest):
     start_time = time.time()
 
     try:
-        hybrid_detector = ApprovedHybridDetector()
+        # Use global hybrid_detector initialized at startup
+        if hybrid_detector is None:
+            raise HTTPException(status_code=503, detail="Hybrid detector not available")
 
         result = hybrid_detector.detect(
             request.text_pair.original,
@@ -219,13 +244,15 @@ async def check_file_supervisor_hybrid(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# TEST ENDPOINT 
+# TEST ENDPOINT
 
 
 @router.get("/test-hybrid")
 async def test_hybrid_endpoint():
     try:
-        hybrid_detector = ApprovedHybridDetector()
+        # Use global hybrid_detector initialized at startup
+        if hybrid_detector is None:
+            raise HTTPException(status_code=503, detail="Hybrid detector not available")
 
         test_cases = [
             {
@@ -306,6 +333,7 @@ async def get_algorithms():
             {"path": "/check-file-supervisor-hybrid", "method": "POST", "description": "File-based hybrid"},
             {"path": "/web-corpus-check", "method": "POST", "description": "FAISS corpus similarity"},
             {"path": "/web-search-check", "method": "POST", "description": "Live Google web search"},
+            {"path": "/enhanced-web-check", "method": "POST", "description": "Enhanced web search (FREE, full page scraping)"},
             {"path": "/comprehensive-check", "method": "POST", "description": "Combined check (direct + corpus + web)"},
             {"path": "/test-hybrid", "method": "GET", "description": "Test with predefined cases"},
             {"path": "/health", "method": "GET", "description": "Health check"},
@@ -313,9 +341,86 @@ async def get_algorithms():
             {"path": "/algorithms", "method": "GET", "description": "List algorithms and endpoints"}
         ],
         "web_search_configured": WEB_SEARCH_AVAILABLE,
-        "corpus_service_available": CORPUS_SERVICE_AVAILABLE
+        "corpus_service_available": CORPUS_SERVICE_AVAILABLE,
+        "enhanced_scraper_available": ENHANCED_SCRAPER_AVAILABLE,
+        "highlight_service_available": HIGHLIGHT_SERVICE_AVAILABLE
     }
 
+
+# ============================================
+# SEMANTIC WORD HIGHLIGHTING ENDPOINT (NEW)
+# ============================================
+
+
+@router.post("/highlight-matches", response_model=HighlightResponse)
+async def highlight_semantic_matches(request: HighlightRequest):
+    """
+    Highlights semantically similar words between original and suspicious text.
+
+    Uses the fine-tuned MiniLM model to find word-level semantic matches
+    and returns highlights with positions, similarity scores, and color codes.
+
+    Color coding:
+    - Red (#ff6b6b): High similarity (>= 80%)
+    - Orange (#ffa94d): Medium similarity (60-80%)
+    - Yellow (#ffd43b): Low similarity (40-60%)
+
+    Request:
+    {
+        "original": "Original Sinhala text",
+        "suspicious": "Suspicious text to highlight",
+        "threshold": 0.4
+    }
+
+    Response includes:
+    - highlights: List of matched words with positions and colors
+    - statistics: Match counts and averages
+    - highlighted_html: HTML string with highlighted words
+    """
+    start_time = time.time()
+
+    if not request.original.strip():
+        raise HTTPException(status_code=400, detail="Original text is required")
+
+    if not request.suspicious.strip():
+        raise HTTPException(status_code=400, detail="Suspicious text is required")
+
+    if not HIGHLIGHT_SERVICE_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Highlight service not available. Check if the fine-tuned model is loaded."
+        )
+
+    try:
+        highlight_service = get_highlight_service()
+
+        result = highlight_service.get_highlighted_matches(
+            original=request.original,
+            suspicious=request.suspicious,
+            threshold=request.threshold
+        )
+
+        # Generate HTML with highlights
+        highlighted_html = highlight_service.get_highlighted_html(
+            original=request.original,
+            suspicious=request.suspicious,
+            threshold=request.threshold
+        )
+
+        processing_time = time.time() - start_time
+
+        # Build response
+        return HighlightResponse(
+            highlights=result["highlights"],
+            suspicious_text=result["suspicious_text"],
+            original_text=result["original_text"],
+            statistics=HighlightStatistics(**result["statistics"]),
+            highlighted_html=highlighted_html
+        )
+
+    except Exception as e:
+        logger.error(f"Highlight service error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/web-corpus-check")
@@ -423,6 +528,119 @@ async def web_search_check(request: SimilarityRequest):
     except Exception as e:
         logger.error(f"Web search check error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ENHANCED WEB SCRAPER ENDPOINT (FREE - No API limits)
+
+
+@router.post("/enhanced-web-check")
+async def enhanced_web_check(request: SimilarityRequest):
+    """
+    Enhanced web plagiarism check using DuckDuckGo + Playwright + Trafilatura.
+
+    ADVANTAGES over Google API:
+    - FREE - No API key required, no rate limits
+    - Scrapes FULL page content (not just snippets)
+    - Handles JavaScript-rendered sites
+    - Uses your fine-tuned model for semantic similarity
+
+    Use this when you only have a suspicious paragraph and want to
+    find potential sources from the ENTIRE web.
+
+    Request format:
+    {
+        "text_pair": {
+            "original": "suspicious text to check",
+            "suspicious": ""  (not used)
+        },
+        "threshold": 0.5
+    }
+    """
+    start_time = time.time()
+
+    text = request.text_pair.original.strip()
+    threshold = request.threshold
+
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    if not ENHANCED_SCRAPER_AVAILABLE:
+        # Return dependency check info
+        return {
+            "success": False,
+            "error": "Enhanced scraper dependencies not installed",
+            "install_instructions": {
+                "step1": "pip install duckduckgo_search",
+                "step2": "pip install trafilatura",
+                "step3": "pip install playwright",
+                "step4": "playwright install chromium"
+            },
+            "note": "After installing, restart the server"
+        }
+
+    try:
+        checker = EnhancedWebPlagiarismChecker()
+        result = checker.check_plagiarism_from_web(
+            suspicious_text=text,
+            num_sources=7,
+            threshold=threshold
+        )
+
+        result["processing_time"] = time.time() - start_time
+
+        # Save to database if available
+        if DB_AVAILABLE and result.get("success"):
+            try:
+                save_check(
+                    check_type="enhanced_web",
+                    original_text=text,
+                    suspicious_text="",
+                    similarity_score=result.get("max_similarity", 0),
+                    is_plagiarized=result.get("max_similarity", 0) >= threshold,
+                    algorithm_used="enhanced-web-scraper",
+                    threshold_applied=threshold,
+                    processing_time=result["processing_time"],
+                    components=result.get("statistics", {}),
+                    metadata=result.get("metadata", {})
+                )
+            except Exception as db_err:
+                logger.warning(f"Failed to save to database: {db_err}")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Enhanced web check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/enhanced-web-check/status")
+async def enhanced_web_check_status():
+    """Check if enhanced web scraper dependencies are installed"""
+    if not ENHANCED_SCRAPER_AVAILABLE:
+        return {
+            "available": False,
+            "message": "Enhanced scraper not available - dependencies not installed",
+            "install_instructions": [
+                "pip install duckduckgo_search",
+                "pip install trafilatura",
+                "pip install playwright",
+                "playwright install chromium"
+            ]
+        }
+
+    try:
+        deps = check_dependencies()
+        return {
+            "available": True,
+            "dependencies": deps,
+            "ready": deps.get("all_available", False),
+            "missing": [k for k, v in deps.items() if not v and k != "all_available"]
+        }
+    except Exception as e:
+        return {
+            "available": False,
+            "error": str(e)
+        }
 
 
 @router.post("/comprehensive-check")
