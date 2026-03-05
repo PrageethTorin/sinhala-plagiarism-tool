@@ -8,6 +8,37 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
   const [reports, setReports] = useState([]); 
   const [loading, setLoading] = useState(false);
 
+  // --- NEW: OCR Image-to-Text Logic ---
+  const handleOcrUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/ocr-extract', {
+        method: 'POST',
+        body: formData, // Browser handles headers for FormData
+      });
+
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+
+      // Populate textarea with extracted Sinhala text
+      setStudentText(data.extractedText);
+      alert("✅ Sinhala text extracted successfully from image!");
+    } catch (err) {
+      console.error("OCR Error:", err);
+      alert("❌ OCR Failed: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Existing: Internet Plagiarism Check Logic ---
   const handleInternetCheck = async () => {
     if (!studentText) {
       alert("Please enter the student's text to scan the internet!");
@@ -34,7 +65,7 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
     setLoading(false);
   };
 
-  // LOGIC: Filter for matches > 0% and then find the one with the HIGHEST percentage
+  // Logic to find the highest matching source
   const matches = reports.filter(r => r.overall_paraphrase_percentage > 0);
   const topMatch = matches.length > 0 
     ? matches.reduce((prev, current) => (prev.overall_paraphrase_percentage > current.overall_paraphrase_percentage) ? prev : current) 
@@ -52,10 +83,34 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
           <h1 className="par-title">Internet Paraphrase Detection</h1>
 
           <div className="par-card">
+            {/* NEW: OCR Component UI */}
+            <div className="ocr-upload-section" style={{ marginBottom: '15px', textAlign: 'right' }}>
+                <input 
+                    type="file" 
+                    accept="image/*" 
+                    id="ocr-file-input" 
+                    style={{ display: 'none' }} 
+                    onChange={handleOcrUpload} 
+                />
+                <label htmlFor="ocr-file-input" className="par-check" style={{ 
+                    backgroundColor: '#722ed1', 
+                    padding: '8px 15px', 
+                    fontSize: '0.9rem', 
+                    cursor: 'pointer',
+                    borderRadius: '5px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: '0.3s'
+                }}>
+                    📷 Extract Text from Image (OCR)
+                </label>
+            </div>
+
             <label className="lbl-block">Paste Student's Work (to scan the web):</label>
             <textarea 
               className="original-box" 
-              placeholder="Paste Sinhala content here to search for paraphrased matches online..."
+              placeholder="Paste Sinhala content here or upload an image to extract text..."
               value={studentText}
               onChange={(e) => setStudentText(e.target.value)}
               style={{ height: '200px' }}
@@ -67,7 +122,7 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
                 onClick={handleInternetCheck} 
                 disabled={loading}
               >
-                {loading ? "🔍 Scanning Web..." : "Scan Internet for Paraphrase"}
+                {loading ? "🔍 Processing..." : "Scan Internet for Paraphrase"}
               </button>
             </div>
           </div>
@@ -100,7 +155,6 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
                       <p style={{ color: '#ff7875', marginBottom: '5px' }}><strong>🔴 Student:</strong> {m.student_sentence}</p>
                       <p style={{ color: '#95de64', marginBottom: '8px' }}><strong>🟢 Source:</strong> {m.source_sentence}</p>
                       
-                      {/* Breakdown of Hybrid Scores */}
                       <div style={{ display: 'flex', gap: '20px', marginTop: '10px', fontSize: '0.9rem', backgroundColor: '#333', padding: '8px', borderRadius: '5px' }}>
                         <span style={{ color: '#bae637' }}>
                           🧠 <strong>Sinhala Model:</strong> {m.semantic_score}%
@@ -109,7 +163,7 @@ export default function Paraphrase({ sidebarOpen, setSidebarOpen }) {
                           ⚙️ <strong>Lexical:</strong> {m.lexical_score}%
                         </span>
                         <span style={{ color: '#fff', fontWeight: 'bold', marginLeft: 'auto' }}>
-                           🛡️ Final Score: {m.paraphrase_score}%
+                            🛡️ Final Score: {m.paraphrase_score}%
                         </span>
                       </div>
                       <div style={{ marginTop: '5px', fontSize: '0.8rem', color: '#888', textAlign: 'right' }}>
