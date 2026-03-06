@@ -11,8 +11,8 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
 
   const handleAnalyze = async () => {
     if (!originalText.trim()) {
-        setErrorMessage("Please enter text to analyze.");
-        return;
+      setErrorMessage("Please enter text to analyze.");
+      return;
     }
 
     setIsLoading(true);
@@ -26,13 +26,18 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
         body: JSON.stringify({ text: originalText }),
       });
 
-      if (!response.ok) throw new Error("Server error occurred.");
+      if (!response.ok) throw new Error("Server communication failed.");
       const data = await response.json();
       
-      // The backend now filters matched_url based on a 60% similarity threshold
+      // Debug: log the response
+      console.log("✅ API Response:", data);
+      console.log("✅ Has ratio_data:", !!data?.ratio_data);
+      
+      // Store the result which now contains ratio_data
       setApiResult(data);
     } catch (error) {
-      setErrorMessage("Connection to backend failed.");
+      console.error("❌ Error:", error);
+      setErrorMessage(error.message || "Connection to backend failed.");
     } finally {
       setIsLoading(false);
     }
@@ -61,49 +66,55 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
             </div>
           </div>
 
-          {apiResult && (
+          {/* FIXED: Using Optional Chaining and deep pathing */}
+          {apiResult?.ratio_data && (
             <div className="ws-result-container fade-in">
-              {/* Style Change Ratio Card */}
               <div className="ws-result-card">
                 <div className="ws-result-label">Style Change Ratio</div>
-                <div className="ws-score-pill">{apiResult.style_change_ratio}%</div>
+                <div className="ws-score-pill">{apiResult.ratio_data.style_change_ratio}%</div>
               </div>
 
-              {/* Plagiarism Discovery Card with 60% Threshold Logic */}
               <div className="ws-source-card">
-                {apiResult.matched_url === "No source found" ? (
-                  <div className="ws-source-not-found">
-                    <span className="ws-icon">✓</span> No Matching Idea Found Online (Similarity below 60%).
-                  </div>
-                ) : (
-                  <div className="ws-source-found">
-                    <div className="ws-source-alert">
-                      <span className="ws-icon">⚠️</span> Plagiarism Detected (Match: {apiResult.similarity_score}%):
-                    </div>
-                    <a href={apiResult.matched_url} target="_blank" rel="noreferrer" className="ws-source-link">
-                      {apiResult.matched_url}
+                <div className="ws-source-alert">
+                  <span className="ws-icon">🔍</span> Status Report:
+                </div>
+                <div className="ws-source-link-box">
+                  {apiResult.ratio_data.matched_url?.startsWith('http') ? (
+                    <a href={apiResult.ratio_data.matched_url} target="_blank" rel="noreferrer" className="ws-source-link">
+                      {apiResult.ratio_data.matched_url}
                     </a>
-                  </div>
-                )}
+                  ) : (
+                    <span className="ws-internal-label">
+                      {apiResult.ratio_data.matched_url} ({apiResult.ratio_data.similarity_score}%)
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {/* Highlighted Text Section */}
               <div className="ws-highlight-box">
-                <h3 className="ws-result-label">Sentence Level Analysis</h3>
+                <h3 className="ws-result-label">Granular Stylistic Analysis</h3>
                 <div className="ws-text-display">
-                  {apiResult.sentence_map.map((s) => (
+                  {/* Mapping through ratio_data.sentence_map to prevent crash */}
+                  {apiResult.ratio_data.sentence_map?.map((s) => (
                     <span 
-                        key={s.id} 
-                        className={s.is_outlier ? "ws-sentence-flagged" : "ws-sentence-normal"}
-                        title={`Length: ${s.length}, TTR: ${s.lexical_ttr}%`}
+                      key={s.id} 
+                      className={s.is_outlier ? "ws-sentence-flagged" : "ws-sentence-normal"}
                     >
-                      {s.text}.{" "}
+                      {/* Mapping through individual words for wavy underlines */}
+                      {s.words?.map((word, idx) => (
+                        <span 
+                          key={idx} 
+                          className={word.is_style_shift ? "ws-word-formal" : ""}
+                        >
+                          {word.text}{' '}
+                        </span>
+                      ))}
                     </span>
                   ))}
                 </div>
                 <div className="ws-legend">
-                
-                   <span className="legend-item"><span className="box flagged"></span> Style Shift Detected</span>
+                   <div className="legend-item"><span className="box flagged-bg"></span> Sentence Level Outlier</div>
+                   <div className="legend-item"><span className="wavy-line">~~~~</span> Morphological Complexity</div>
                 </div>
               </div>
             </div>

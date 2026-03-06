@@ -35,14 +35,9 @@ async def check_style(request: TextRequest):
 
         # Results must be awaited to resolve the coroutine
         results = await analyzer.check_text(request.text)
-        data = results.get('ratio_data', {})
         
-        return {
-            "style_change_ratio": data.get('style_change_ratio', 0),
-            "matched_url": data.get('matched_url', "No source found"),
-            "similarity_score": data.get('similarity_score', 0),
-            "sentence_map": data.get('sentence_map', [])
-        }
+        # Return the results directly - they already have the correct format
+        return results
     except Exception as e:
         print(f"📡 SERVER ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

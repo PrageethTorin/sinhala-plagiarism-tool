@@ -1,8 +1,27 @@
-import trafilatura
 import re
 import asyncio
-from ddgs import DDGS 
-from playwright.async_api import async_playwright
+
+# Try to import optional dependencies with graceful fallback
+try:
+    import trafilatura
+    HAS_TRAFILATURA = True
+except ImportError:
+    HAS_TRAFILATURA = False
+    print("⚠️ Warning: trafilatura not installed - web content extraction disabled")
+
+try:
+    from ddgs import DDGS
+    HAS_DDGS = True
+except ImportError:
+    HAS_DDGS = False
+    print("⚠️ Warning: duckduckgo-search not installed - web search disabled")
+
+try:
+    from playwright.async_api import async_playwright
+    HAS_PLAYWRIGHT = True
+except ImportError:
+    HAS_PLAYWRIGHT = False
+    print("⚠️ Warning: playwright not installed - web scraping disabled")
 
 def clean_text(text):
     """Normalizes Sinhala text for accurate similarity matching."""
@@ -14,6 +33,10 @@ def clean_text(text):
 async def get_internet_resources(query_text, num_results=7):
     """DISCOVERY: Fetches high-confidence URLs from the web."""
     links = []
+    if not HAS_DDGS:
+        print("⚠️ DuckDuckGo search disabled - trafilatura module not available")
+        return links
+    
     try:
         def fetch_search():
             with DDGS() as ddgs:
@@ -32,6 +55,10 @@ async def get_internet_resources(query_text, num_results=7):
 
 async def scrape_url_content(url):
     """EXTRACTION: Scrapes core content and cleans it."""
+    if not HAS_PLAYWRIGHT or not HAS_TRAFILATURA:
+        print("⚠️ Web scraping disabled - playwright or trafilatura module not available")
+        return ""
+    
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -41,5 +68,6 @@ async def scrape_url_content(url):
             await browser.close()
             text = trafilatura.extract(content, include_comments=False)
             return clean_text(text)
-    except Exception:
+    except Exception as e:
+        print(f"⚠️ Scraping error for {url}: {e}")
         return ""
