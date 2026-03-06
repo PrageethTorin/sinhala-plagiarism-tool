@@ -13,19 +13,19 @@ export default function Home({ sidebarOpen, setSidebarOpen }) {
             <h1 className="hero-title">
               <span className="highlight">Sinhala</span> Plagiarism Checker now
               <br />
-              Enhanced with <span className="ai-highlight">AI Content Detector</span>
+              Enhanced with <span className="ai-highlight"> Content Detector</span>
             </h1>
-
+            
             <p className="hero-description">
-              Our advanced plagiarism checker uses semantic similarity modeling to detect plagiarism in Sinhala text — even when content is paraphrased with different words but the same meaning.
+              Hey our advanced plagiarism checker verifies against internet sources, academic databases and Sinhala content to give you the most comprehensive plagiarism detection.
             </p>
 
-            <a href="#/writing-style-2" className="btn-check-now">Check Now</a>
+            <a href="#/paraphrase" className="btn-check-now">Check Now</a>
           </div>
 
           <div className="hero-right">
-            <img
-              src="https://imgur.com/4eOuzSJ.png"
+            <img 
+              src="https://imgur.com/4eOuzSJ.png" 
               alt="Plagiarism Detection Illustration"
               className="hero-image"
             />
@@ -34,40 +34,52 @@ export default function Home({ sidebarOpen, setSidebarOpen }) {
 
         <div className="stats-section">
           <div className="stat-card">
-            <div className="stat-number">2,494</div>
-            <div className="stat-label">Training Pairs</div>
+            <div className="stat-number">82M+</div>
+            <div className="stat-label">Scholarly Articles</div>
           </div>
 
           <div className="stat-card">
-            <div className="stat-number">0.9997</div>
-            <div className="stat-label">ROC-AUC Score</div>
+            <div className="stat-number">91B+</div>
+            <div className="stat-label">Web Pages Indexed</div>
           </div>
 
           <div className="stat-card">
-            <div className="stat-number">2,807</div>
-            <div className="stat-label">Corpus Paragraphs</div>
+            <div className="stat-number">153M+</div>
+            <div className="stat-label">Open Access Articles</div>
           </div>
 
           <div className="stat-card">
-            <div className="stat-number">97.17%</div>
-            <div className="stat-label">Paraphrase Detection</div>
+            <div className="stat-number">102M+</div>
+            <div className="stat-label">Pages Updated Daily</div>
           </div>
         </div>
 
         <div className="features-section">
           <h2 className="features-title">Our Features</h2>
-
+          
           <div className="features-grid">
-            <a href="#/writing-style-2" className="feature-card similarity-card">
-              <div className="card-icon">🔍</div>
-              <h3>Semantic Similarity (Comparison)</h3>
-              <p>Compare two texts and detect plagiarism with hybrid ML approach</p>
+            <a href="#/paraphrase" className="feature-card paraphrase-card">
+              <div className="card-icon">📄</div>
+              <h3>Paraphrase Detection</h3>
+              <p>Detect paraphrased content and rewritten text</p>
+            </a>
+
+            <a href="#/writing-style-1" className="feature-card writing-card">
+              <div className="card-icon">✍️</div>
+              <h3>Writing Style</h3>
+              <p>Analyze and identify writing patterns</p>
             </a>
 
             <a href="#/writing-style-2" className="feature-card similarity-card">
-              <div className="card-icon">🌐</div>
-              <h3>Semantic Similarity (Web Search)</h3>
-              <p>Search the web to find original sources using embedding-first detection</p>
+              <div className="card-icon">🔍</div>
+              <h3>Semantic Similarity</h3>
+              <p>Find semantically similar content</p>
+            </a>
+
+            <a href="#/pretrained" className="feature-card pretrained-card">
+              <div className="card-icon">🤖</div>
+              <h3>Pretrained Models</h3>
+              <p>AI-powered plagiarism detection</p>
             </a>
           </div>
         </div>

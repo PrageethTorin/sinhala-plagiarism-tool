@@ -5,7 +5,6 @@
 *.sqlite3
 .DS_Store
 Thumbs.db
-nul
 
 # Python + Node common folders
 .claude
@@ -39,45 +38,3 @@ setup_mysql.bat
 sinhala_fine_tuned_model/
 **/sinhala_fine_tuned_model/
 *.safetensors
-
-# Authentication files (not going to main branch)
-backend/auth/
-**/backend/auth/
-frontend/src/context/
-**/frontend/src/context/
-frontend/src/components/Signup.js
-frontend/src/components/Signup.css
-**/Signup.js
-**/Signup.css
-**/AuthContext.js
-# Python virtual environment
-.venv/
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# production
-/build
-
-# misc
-.DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-/.pyc
-
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-pycache_/
-pycache_/*
-_pycache_
-_pycache_/
-*.pyc
-*.pyo

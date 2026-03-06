@@ -37,6 +37,6 @@ google-auth>=2.0.0
 email-validator>=2.0.0
 
 # Enhanced Web Scraping (FREE alternative to Google API)
-duckduckgo-search>=8.0.0
+ddgs>=9.0.0
 trafilatura>=2.0.0
 playwright>=1.40.0

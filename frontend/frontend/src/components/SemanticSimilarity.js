@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState } from 'react';
 import NavBar from './NavBar';
 import Sidebar from './Sidebar';
 import './SemanticSimilarity.css';
@@ -26,15 +26,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
   const [enhancedText, setEnhancedText] = useState('');
   const [enhancedLoading, setEnhancedLoading] = useState(false);
   const [enhancedResult, setEnhancedResult] = useState(null);
-
-  // Turnitin-style report state
-  const [activeSourceIndex, setActiveSourceIndex] = useState(null);
-  const [showWebHighlights, setShowWebHighlights] = useState(true);
-  const highlightRefs = useRef({});
-  const sourceRefs = useRef({});
-
-  // File upload state
-  const [fileUploading, setFileUploading] = useState({ original: false, suspicious: false, enhanced: false });
 
   // Shared state
   const [error, setError] = useState('');
@@ -114,7 +105,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     setEnhancedLoading(true);
     setError("");
     setEnhancedResult(null);
-    setActiveSourceIndex(null);
 
     try {
       const response = await axios.post(`${API_BASE_URL}/api/enhanced-web-check`, {
@@ -142,94 +132,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     }
   };
 
-  // ==================== TURNITIN-STYLE REPORT HELPERS ====================
-  const SOURCE_COLORS = [
-    { bg: 'rgba(255, 107, 107, 0.3)', border: '#ff6b6b', text: '#ff6b6b' },
-    { bg: 'rgba(102, 126, 234, 0.3)', border: '#667eea', text: '#667eea' },
-    { bg: 'rgba(255, 169, 77, 0.3)',  border: '#ffa94d', text: '#ffa94d' },
-    { bg: 'rgba(81, 207, 102, 0.3)',  border: '#51cf66', text: '#51cf66' },
-    { bg: 'rgba(204, 93, 232, 0.3)',  border: '#cc5de8', text: '#cc5de8' },
-    { bg: 'rgba(34, 184, 207, 0.3)',  border: '#22b8cf', text: '#22b8cf' },
-    { bg: 'rgba(255, 212, 59, 0.3)',  border: '#ffd43b', text: '#ffd43b' },
-    { bg: 'rgba(255, 135, 154, 0.3)', border: '#ff879a', text: '#ff879a' },
-    { bg: 'rgba(116, 184, 22, 0.3)',  border: '#74b816', text: '#74b816' },
-    { bg: 'rgba(166, 140, 255, 0.3)', border: '#a68cff', text: '#a68cff' },
-  ];
-
-  const buildHighlightedDocument = useCallback((text, matches) => {
-    if (!text || !matches || matches.length === 0) return [{ type: 'text', content: text }];
-
-    // Build regions from matches
-    const regions = [];
-    matches.forEach((match, sourceIndex) => {
-      const userText = match.user_matched_text || '';
-      if (!userText) return;
-      const pos = text.indexOf(userText);
-      if (pos === -1) return;
-      regions.push({
-        start: pos,
-        end: pos + userText.length,
-        sourceIndex,
-        match,
-      });
-    });
-
-    // Sort by start position
-    regions.sort((a, b) => a.start - b.start);
-
-    // Remove overlaps — keep higher-scoring match
-    const filtered = [];
-    for (const region of regions) {
-      const last = filtered[filtered.length - 1];
-      if (last && region.start < last.end) {
-        // Overlap: keep higher score
-        if ((region.match.similarity_score || 0) > (last.match.similarity_score || 0)) {
-          filtered[filtered.length - 1] = region;
-        }
-        // else skip this region
-      } else {
-        filtered.push(region);
-      }
-    }
-
-    // Build segments
-    const segments = [];
-    let cursor = 0;
-    for (const region of filtered) {
-      if (region.start > cursor) {
-        segments.push({ type: 'text', content: text.slice(cursor, region.start) });
-      }
-      segments.push({
-        type: 'highlight',
-        content: text.slice(region.start, region.end),
-        sourceIndex: region.sourceIndex,
-        match: region.match,
-      });
-      cursor = region.end;
-    }
-    if (cursor < text.length) {
-      segments.push({ type: 'text', content: text.slice(cursor) });
-    }
-
-    return segments;
-  }, []);
-
-  const scrollToSource = useCallback((index) => {
-    setActiveSourceIndex(index);
-    const el = sourceRefs.current[index];
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, []);
-
-  const scrollToHighlight = useCallback((index) => {
-    setActiveSourceIndex(index);
-    const el = highlightRefs.current[index];
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('pulse-highlight');
-      setTimeout(() => el.classList.remove('pulse-highlight'), 1500);
-    }
-  }, []);
-
   // ==================== UTILITY FUNCTIONS ====================
   const handleExample = () => {
     const exampleOriginal = "ශ්‍රී ලංකාවේ අධ්‍යාපන පද්ධතිය නවීකරණය කිරීමේ අවශ්‍යතාවය දැන් වැදගත් වේ. ගුණාත්මක අධ්‍යාපනයක් සහතික කිරීම සඳහා යාවත්කාලීන උපකරණ හා උපදේශන ක්‍රම අවශ්‍ය වේ.";
@@ -248,7 +150,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     setResult(null);
     setEnhancedResult(null);
     setHighlightData(null);
-    setActiveSourceIndex(null);
     setError("");
   };
 
@@ -256,68 +157,27 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Reset input so the same file can be re-selected
-    e.target.value = '';
+    const fileType = file.name.split('.').pop().toLowerCase();
+    const allowedTypes = ['txt', 'pdf', 'doc', 'docx'];
 
-    const fileExt = file.name.split('.').pop().toLowerCase();
-    const allowedTypes = ['txt', 'pdf', 'docx'];
-
-    if (!allowedTypes.includes(fileExt)) {
-      setError(`Unsupported file type: .${fileExt}. Please upload .txt, .pdf, or .docx files.`);
+    if (!allowedTypes.includes(fileType)) {
+      setError(`Unsupported file type: .${fileType}. Please upload .txt, .pdf, .doc, or .docx files.`);
       return;
     }
 
-    // Client-side file size check (10 MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError(`File too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Maximum is 10 MB.`);
-      return;
-    }
-
-    const setText = (text) => {
-      if (textType === 'original') setOriginalText(text);
-      else if (textType === 'suspicious') setSuspiciousText(text);
-      else if (textType === 'enhanced') setEnhancedText(text);
-    };
-
-    setError('');
-
-    // TXT files: read client-side (fast, no server round-trip)
-    if (fileExt === 'txt') {
+    if (fileType === 'txt') {
       const reader = new FileReader();
-      reader.onload = (event) => setText(event.target.result);
-      reader.onerror = () => setError('Failed to read the text file.');
+      reader.onload = (event) => {
+        const content = event.target.result;
+        if (textType === 'original') {
+          setOriginalText(content);
+        } else {
+          setSuspiciousText(content);
+        }
+      };
       reader.readAsText(file);
-      return;
-    }
-
-    // PDF/DOCX files: send to backend for extraction
-    setFileUploading((prev) => ({ ...prev, [textType]: true }));
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await axios.post(`${API_BASE_URL}/api/extract-text`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 30000,
-      });
-
-      if (response.data.success && response.data.text) {
-        setText(response.data.text);
-      } else {
-        setError('No text could be extracted from the file.');
-      }
-    } catch (err) {
-      console.error('File extraction error:', err);
-      if (err.response) {
-        setError(err.response.data?.detail || 'Failed to extract text from file.');
-      } else if (err.code === 'ECONNABORTED') {
-        setError('File extraction timed out. Please try a smaller file.');
-      } else {
-        setError('Cannot connect to server. Make sure backend is running on port 8000.');
-      }
-    } finally {
-      setFileUploading((prev) => ({ ...prev, [textType]: false }));
+    } else {
+      setError(`For ${fileType.toUpperCase()} files, please use the File Upload feature in the API or convert to text first.`);
     }
   };
 
@@ -380,12 +240,11 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                           type="file"
                           className="file-input-hidden"
                           onChange={(e) => handleFileUpload(e, 'original')}
-                          accept=".txt,.pdf,.docx"
+                          accept=".txt,.pdf,.doc,.docx"
                           id="original-file"
-                          disabled={fileUploading.original}
                         />
-                        <label htmlFor="original-file" className={`upload-btn ${fileUploading.original ? 'uploading' : ''}`}>
-                          {fileUploading.original ? (<><span className="loading-spinner"></span>Extracting...</>) : 'Upload'}
+                        <label htmlFor="original-file" className="upload-btn">
+                          Upload
                         </label>
                       </div>
                     </div>
@@ -415,12 +274,11 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                           type="file"
                           className="file-input-hidden"
                           onChange={(e) => handleFileUpload(e, 'suspicious')}
-                          accept=".txt,.pdf,.docx"
+                          accept=".txt,.pdf,.doc,.docx"
                           id="suspicious-file"
-                          disabled={fileUploading.suspicious}
                         />
-                        <label htmlFor="suspicious-file" className={`upload-btn ${fileUploading.suspicious ? 'uploading' : ''}`}>
-                          {fileUploading.suspicious ? (<><span className="loading-spinner"></span>Extracting...</>) : 'Upload'}
+                        <label htmlFor="suspicious-file" className="upload-btn">
+                          Upload
                         </label>
                       </div>
                     </div>
@@ -672,19 +530,6 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                 <div className="text-card single-input">
                   <div className="card-header">
                     <span className="card-title">Suspicious Text to Check</span>
-                    <div className="file-upload-wrapper">
-                      <input
-                        type="file"
-                        className="file-input-hidden"
-                        onChange={(e) => handleFileUpload(e, 'enhanced')}
-                        accept=".txt,.pdf,.docx"
-                        id="enhanced-file"
-                        disabled={fileUploading.enhanced}
-                      />
-                      <label htmlFor="enhanced-file" className={`upload-btn ${fileUploading.enhanced ? 'uploading' : ''}`}>
-                        {fileUploading.enhanced ? (<><span className="loading-spinner"></span>Extracting...</>) : 'Upload'}
-                      </label>
-                    </div>
                   </div>
                   <textarea
                     className="text-input"
@@ -787,122 +632,84 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                           </div>
                         </div>
 
-                        {/* ===== TURNITIN-STYLE REPORT ===== */}
+                        {/* Matches */}
                         {enhancedResult.matches && enhancedResult.matches.length > 0 && (
-                          <div className="turnitin-report-section">
-                            <div className="section-header">
-                              <h3 className="section-title">Similarity Report</h3>
-                              <label className="toggle-label">
-                                <input
-                                  type="checkbox"
-                                  checked={showWebHighlights}
-                                  onChange={(e) => setShowWebHighlights(e.target.checked)}
-                                />
-                                Show Highlights
-                              </label>
-                            </div>
-
-                            <div className="turnitin-report">
-                              {/* Left: Document with highlights */}
-                              <div className="report-document">
-                                <div className="report-document-header">Your Document</div>
-                                <div className="report-document-body">
-                                  {showWebHighlights ? (
-                                    buildHighlightedDocument(enhancedText, enhancedResult.matches).map((seg, i) =>
-                                      seg.type === 'text' ? (
-                                        <span key={i}>{seg.content}</span>
-                                      ) : (
-                                        <span
-                                          key={i}
-                                          ref={(el) => { highlightRefs.current[seg.sourceIndex] = el; }}
-                                          className={`report-highlight ${activeSourceIndex === seg.sourceIndex ? 'active' : ''}`}
-                                          style={{
-                                            backgroundColor: SOURCE_COLORS[seg.sourceIndex % SOURCE_COLORS.length].bg,
-                                            borderBottomColor: SOURCE_COLORS[seg.sourceIndex % SOURCE_COLORS.length].border,
-                                          }}
-                                          onClick={() => scrollToSource(seg.sourceIndex)}
-                                          title={`Source ${seg.sourceIndex + 1}: ${seg.match.source_title || seg.match.source_url || ''} — ${((seg.match.similarity_score || 0) * 100).toFixed(1)}%`}
-                                        >
-                                          <span
-                                            className="source-marker"
-                                            style={{
-                                              backgroundColor: SOURCE_COLORS[seg.sourceIndex % SOURCE_COLORS.length].border,
-                                            }}
-                                          >
-                                            {seg.sourceIndex + 1}
-                                          </span>
-                                          {seg.content}
-                                        </span>
-                                      )
-                                    )
-                                  ) : (
-                                    enhancedText
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Right: Source list */}
-                              <div className="report-sources">
-                                <div className="report-sources-header">
-                                  Sources ({enhancedResult.matches.length})
-                                </div>
-                                <div className="report-sources-list">
-                                  {enhancedResult.matches.map((match, index) => {
-                                    const color = SOURCE_COLORS[index % SOURCE_COLORS.length];
-                                    const hostname = (() => {
-                                      try { return new URL(match.source_url).hostname; } catch { return match.source_url || 'Unknown'; }
-                                    })();
-
-                                    return (
-                                      <div
-                                        key={index}
-                                        ref={(el) => { sourceRefs.current[index] = el; }}
-                                        className={`source-card ${activeSourceIndex === index ? 'active' : ''}`}
-                                        style={{ borderLeftColor: color.border }}
-                                        onClick={() => scrollToHighlight(index)}
+                          <div className="matches-section">
+                            <h4 className="section-subtitle">Matching Sources</h4>
+                            <div className="matches-list">
+                              {enhancedResult.matches.map((match, index) => (
+                                <div key={index} className="match-item web-match">
+                                  <div className="match-content">
+                                    <div className="match-title">
+                                      {match.source_title || 'Web Source'}
+                                    </div>
+                                    <div className="match-text-preview">
+                                      {match.matched_text || 'No preview available'}
+                                    </div>
+                                    {match.source_url && (
+                                      <a
+                                        href={match.source_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="match-url"
                                       >
-                                        <div className="source-card-top">
-                                          <span className="source-number" style={{ backgroundColor: color.border }}>
-                                            {index + 1}
-                                          </span>
-                                          <span className="source-score" style={{ color: getScoreColor(match.similarity_score || 0) }}>
-                                            {((match.similarity_score || 0) * 100).toFixed(1)}%
-                                          </span>
-                                        </div>
-                                        <div className="source-hostname">{hostname}</div>
-                                        {match.source_title && (
-                                          <div className="source-title-text">{match.source_title}</div>
-                                        )}
-                                        <div className="source-card-meta">
-                                          <span className={`case-badge small ${match.case_type}`}>
-                                            {match.case_type === 'easy_negative' && 'Easy Negative'}
-                                            {match.case_type === 'easy_positive' && 'Easy Positive'}
-                                            {match.case_type === 'difficult' && 'Difficult (ML)'}
-                                            {match.case_type === 'paraphrase_detected' && 'Paraphrase'}
-                                          </span>
-                                        </div>
-                                        <div className="source-score-breakdown">
-                                          <span className="mini-pill">Custom {((match.custom_score || 0) * 100).toFixed(0)}%</span>
-                                          {match.embedding_score != null && (
-                                            <span className="mini-pill">Embed {(match.embedding_score * 100).toFixed(0)}%</span>
-                                          )}
-                                        </div>
-                                        {match.source_url && (
-                                          <a
-                                            href={match.source_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="source-link"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            Open source
-                                          </a>
-                                        )}
+                                        {match.source_url}
+                                      </a>
+                                    )}
+
+                                    {/* Case Type Badge - like paragraph comparison */}
+                                    <div className="case-type-section">
+                                      <span className={`case-badge ${match.case_type}`}>
+                                        {match.case_type === 'easy_negative' && '✓ Easy Negative'}
+                                        {match.case_type === 'easy_positive' && '⚠ Easy Positive'}
+                                        {match.case_type === 'difficult' && '🔍 Difficult Case (ML Used)'}
+                                        {match.case_type === 'paraphrase_detected' && '🔥 Paraphrase Detected!'}
+                                      </span>
+                                      <span className="method-badge">
+                                        {match.method === 'custom_only' && 'Custom Algorithm'}
+                                        {match.method === 'hybrid_fine_tuned' && 'Hybrid + Fine-tuned Model'}
+                                        {match.method === 'embedding_primary' && 'Embedding Model (Semantic)'}
+                                        {match.method === 'both_high' && 'Both Scores High'}
+                                        {match.method === 'embedding_checked' && 'Embedding Verified'}
+                                      </span>
+                                    </div>
+
+                                    {/* Score Breakdown - like paragraph comparison */}
+                                    <div className="components-grid web-scores">
+                                      <div className="component-item">
+                                        <div className="component-name">Custom Score</div>
+                                        <div className="component-desc">(Jaccard + N-grams + Word Order)</div>
+                                        <div className="component-value">{((match.custom_score || 0) * 100).toFixed(1)}%</div>
                                       </div>
-                                    );
-                                  })}
+                                      {match.embedding_score !== undefined && match.embedding_score !== null && (
+                                        <div className="component-item">
+                                          <div className="component-name">Embedding Score</div>
+                                          <div className="component-desc">(Fine-tuned MiniLM Model)</div>
+                                          <div className="component-value">{(match.embedding_score * 100).toFixed(1)}%</div>
+                                        </div>
+                                      )}
+                                      <div className="component-item highlight">
+                                        <div className="component-name">Final Score</div>
+                                        <div className="component-desc">
+                                          {match.case_type === 'difficult'
+                                            ? '(Custom + Embedding) / 2'
+                                            : '(Custom Score Only)'}
+                                        </div>
+                                        <div className="component-value">{((match.similarity_score || 0) * 100).toFixed(1)}%</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div
+                                    className="match-score"
+                                    style={{
+                                      color: getScoreColor(match.similarity_score || 0),
+                                      borderColor: getScoreColor(match.similarity_score || 0)
+                                    }}
+                                  >
+                                    {((match.similarity_score || 0) * 100).toFixed(1)}%
+                                  </div>
                                 </div>
-                              </div>
+                              ))}
                             </div>
                           </div>
                         )}

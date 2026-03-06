@@ -244,6 +244,57 @@ async def check_file_supervisor_hybrid(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# TEXT EXTRACTION FROM FILE
+
+
+@router.post("/extract-text")
+async def extract_text_from_file(file: UploadFile = File(...)):
+    """
+    Extract text content from an uploaded file (PDF, DOCX, or TXT).
+    Used by the frontend to populate text areas from uploaded documents.
+    Max file size: 10 MB.
+    """
+    # Validate file type
+    allowed_extensions = ('.txt', '.pdf', '.docx')
+    filename_lower = (file.filename or '').lower()
+    if not filename_lower.endswith(allowed_extensions):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type. Allowed: {', '.join(allowed_extensions)}"
+        )
+
+    # Validate file size (10 MB)
+    max_size = 10 * 1024 * 1024
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large ({len(contents) / (1024*1024):.1f} MB). Maximum is 10 MB."
+        )
+
+    # Reset file position so FileHandler can read it
+    await file.seek(0)
+
+    try:
+        text = await file_handler.read_file(file)
+        if not text or not text.strip():
+            raise HTTPException(status_code=400, detail="No text could be extracted from the file.")
+
+        file_ext = filename_lower.rsplit('.', 1)[-1]
+        return {
+            "success": True,
+            "text": text,
+            "filename": file.filename,
+            "file_type": file_ext,
+            "character_count": len(text)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Text extraction error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to extract text: {str(e)}")
+
+
 # TEST ENDPOINT
 
 

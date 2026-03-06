@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './Sidebar.css';
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
-  const [activeItem, setActiveItem] = useState('#/paraphrase');
+  const [activeItem, setActiveItem] = useState('#/writing-style-2');
 
   useEffect(() => {
     const updateActive = () => {
@@ -31,26 +31,8 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
         <nav className="sidebar-menu">
 
           <a
-            href="#/paraphrase"
-            className="sidebar-item"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="sidebar-icon">📄</span>
-            <span>Paraphrase Detection</span>
-          </a>
-
-          <a
-            href="#/writing-style-1"
-            className="sidebar-item"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="sidebar-icon">✍️</span>
-            <span>Writing Style</span>
-          </a>
-
-          <a
             href="#/writing-style-2"
-            className="sidebar-item"
+            className={`sidebar-item ${activeItem === '#/writing-style-2' ? 'sidebar-active' : ''}`}
             onClick={() => setSidebarOpen(false)}
           >
             <span className="sidebar-icon">🔍</span>
@@ -58,12 +40,21 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           </a>
 
           <a
+            href="#/paraphrase"
+            className={`sidebar-item ${activeItem === '#/paraphrase' ? 'sidebar-active' : ''}`}
+            onClick={() => setSidebarOpen(false)}
+          >
+            <span className="sidebar-icon">📝</span>
+            <span>Paraphrase Detection</span>
+          </a>
+
+          <a
             href="#/pretrained"
-            className="sidebar-item sidebar-active"
+            className={`sidebar-item ${activeItem === '#/pretrained' ? 'sidebar-active' : ''}`}
             onClick={() => setSidebarOpen(false)}
           >
             <span className="sidebar-icon">🤖</span>
-            <span>Plagiarism Check</span>
+            <span>Pretrained Detection</span>
           </a>
 
         </nav>

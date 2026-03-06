@@ -1,0 +1,299 @@
+/**
+ * HighlightedText Component Styles
+ * =================================
+ * Styles for semantic word highlighting display
+ *
+ * Author: S N S Dahanayake (IT22920522)
+ * Created: January 10, 2026
+ */
+
+/* Main container */
+.highlighted-text-container {
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  font-family: 'Iskoola Pota', 'Noto Sans Sinhala', sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+  margin: 10px 0;
+}
+
+.highlighted-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Normal text (non-highlighted) */
+.normal-text {
+  color: #333;
+}
+
+/* Base highlight styles */
+.semantic-highlight {
+  position: relative;
+  display: inline;
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.semantic-highlight:hover {
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* High similarity (>= 80%) - Red */
+.semantic-highlight.high-similarity {
+  background-color: #ff6b6b !important;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Medium similarity (60-80%) - Orange */
+.semantic-highlight.medium-similarity {
+  background-color: #ffa94d !important;
+  color: #333;
+  font-weight: 500;
+}
+
+/* Low similarity (40-60%) - Yellow */
+.semantic-highlight.low-similarity {
+  background-color: #ffd43b !important;
+  color: #333;
+}
+
+/* Tooltip */
+.highlight-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  margin-bottom: 5px;
+}
+
+.highlight-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #333;
+}
+
+/* Statistics section */
+.highlight-stats {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 15px;
+  border: 1px solid #e0e0e0;
+}
+
+.highlight-stats h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Similarity breakdown */
+.similarity-breakdown {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+}
+
+.similarity-breakdown h5 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.breakdown-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.breakdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.breakdown-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+}
+
+.breakdown-color.high-color {
+  background-color: #ff6b6b;
+}
+
+.breakdown-color.medium-color {
+  background-color: #ffa94d;
+}
+
+.breakdown-color.low-color {
+  background-color: #ffd43b;
+}
+
+.breakdown-label {
+  flex: 1;
+  font-size: 13px;
+  color: #555;
+}
+
+.breakdown-value {
+  font-weight: 600;
+  color: #333;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* Legend */
+.highlight-legend {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.legend-title {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.legend-items {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #555;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+}
+
+/* Animation for new highlights */
+@keyframes highlightPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+  }
+}
+
+.semantic-highlight.animate {
+  animation: highlightPulse 1s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .highlight-legend {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .legend-items {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .highlighted-text-container {
+    background-color: #2d2d2d;
+    border-color: #444;
+  }
+
+  .normal-text {
+    color: #e0e0e0;
+  }
+
+  .highlight-stats {
+    background-color: #333;
+    border-color: #444;
+  }
+
+  .highlight-stats h4,
+  .stat-value,
+  .breakdown-value {
+    color: #e0e0e0;
+  }
+
+  .stat-item {
+    background-color: #3d3d3d;
+  }
+
+  .stat-label,
+  .similarity-breakdown h5,
+  .breakdown-label,
+  .legend-title {
+    color: #aaa;
+  }
+}
