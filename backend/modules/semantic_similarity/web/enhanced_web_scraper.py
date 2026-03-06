@@ -727,21 +727,21 @@ class EnhancedWebPlagiarismChecker:
 
                     # Add if above threshold
                     if score >= threshold:
-                        # Find best matching user paragraph
-                        user_matched = suspicious_text[:500]
+                        # Find best matching user paragraph (full text, no truncation)
+                        user_matched = suspicious_text
                         if user_para_embs is not None and para_embeddings is not None:
                             try:
                                 web_para_emb = para_embeddings[idx]
                                 user_sims = np.dot(user_para_embs, web_para_emb)
                                 best_user_idx = int(np.argmax(user_sims))
-                                user_matched = user_paragraphs[best_user_idx][:500]
+                                user_matched = user_paragraphs[best_user_idx]
                             except Exception as e:
                                 logger.warning(f"User paragraph matching failed: {e}")
 
                         match = PlagiarismResult(
                             source_url=source.url,
                             source_title=source.title,
-                            matched_text=paragraph[:500],
+                            matched_text=paragraph,
                             similarity_score=score,
                             case_type=case_type,
                             method=method,

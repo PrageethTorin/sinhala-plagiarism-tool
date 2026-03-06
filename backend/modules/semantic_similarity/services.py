@@ -7,9 +7,10 @@ from typing import List, Set, Dict, Tuple
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import jellyfish
-import PyPDF2
+import pdfplumber
 import docx
 import io
+import chardet
 from fastapi import UploadFile, HTTPException
 import torch
 from sentence_transformers import SentenceTransformer
@@ -318,29 +319,83 @@ class FileHandler:
     async def read_file(self, file: UploadFile) -> str:
         """Read text from different file types"""
         content = await file.read()
-        
+
         if file.filename.endswith('.txt'):
-            return content.decode('utf-8')
+            return self._read_text(content)
         elif file.filename.endswith('.pdf'):
             return self._read_pdf(content)
         elif file.filename.endswith('.docx'):
             return self._read_docx(content)
         else:
-            try:
-                return content.decode('utf-8')
-            except:
-                raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.filename}")
+            return self._read_text(content)
+
+    def _read_text(self, content: bytes) -> str:
+        """Read text file with automatic encoding detection for Sinhala support"""
+        # Check for UTF-8 BOM
+        if content.startswith(b'\xef\xbb\xbf'):
+            return content[3:].decode('utf-8')
+        # Check for UTF-16 BOM
+        if content.startswith(b'\xff\xfe') or content.startswith(b'\xfe\xff'):
+            return content.decode('utf-16')
+
+        # Try UTF-8 first
+        try:
+            decoded = content.decode('utf-8')
+            # Verify it contains valid Sinhala characters (U+0D80-U+0DFF)
+            if re.search(r'[\u0D80-\u0DFF]', decoded):
+                return decoded
+        except UnicodeDecodeError:
+            pass
+
+        # Auto-detect encoding using chardet
+        detected = chardet.detect(content)
+        encoding = detected.get('encoding', 'utf-8')
+        confidence = detected.get('confidence', 0)
+
+        try:
+            decoded = content.decode(encoding)
+            return decoded
+        except (UnicodeDecodeError, LookupError):
+            # Last resort: try common encodings
+            for enc in ['utf-16', 'utf-16-le', 'utf-16-be', 'cp1252', 'latin-1']:
+                try:
+                    return content.decode(enc)
+                except (UnicodeDecodeError, LookupError):
+                    continue
+            raise HTTPException(status_code=400, detail="Could not detect file encoding")
     
     def _read_pdf(self, content: bytes) -> str:
-        """Extract text from PDF"""
+        """Extract text from PDF (with Sinhala-friendly spacing)"""
         try:
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
             text = ""
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-            return text
+            with pdfplumber.open(io.BytesIO(content)) as pdf:
+                for page in pdf.pages:
+                    # Higher x_tolerance prevents false spaces in Sinhala conjuncts
+                    page_text = page.extract_text(x_tolerance=5)
+                    if page_text:
+                        text += page_text + "\n"
+            # Remove spurious spaces between Sinhala characters
+            text = self._fix_sinhala_spacing(text)
+            return text.strip()
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Error reading PDF: {str(e)}")
+
+    def _fix_sinhala_spacing(self, text: str) -> str:
+        """Remove false spaces inserted within Sinhala words by PDF extractors.
+
+        Only removes spaces that break Sinhala conjuncts/ligatures:
+        - After virama (්) or virama+ZWJ (්‍) followed by a consonant
+        - After a vowel sign (dependent vowel) followed by a consonant
+        """
+        import re
+        # Remove space after virama (්) + optional ZWJ (‍) before next Sinhala char
+        # This fixes: ප්‍ර ණීත → ප්‍රණීත, ආශ්‍රි තව → ආශ්‍රිතව
+        text = re.sub(r'(\u0DCA[\u200D]?)\s+([\u0D80-\u0DFF])', r'\1\2', text)
+        # Remove space after dependent vowel signs before Sinhala consonants
+        # Sinhala dependent vowels: \u0DCF-\u0DDF
+        # This fixes: මප්‍රෝ ටීන්ද → මප්‍රෝටීන්ද
+        text = re.sub(r'([\u0DCF-\u0DDF])\s+([\u0D9A-\u0DC6])', r'\1\2', text)
+        return text
     
     def _read_docx(self, content: bytes) -> str:
         """Extract text from DOCX"""

@@ -156,6 +156,21 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     { bg: 'rgba(166, 140, 255, 0.3)', border: '#a68cff', text: '#a68cff' },
   ];
 
+  // Find words that differ between user text and web source text
+  const findChangedWords = useCallback((userText, webText) => {
+    if (!userText || !webText) return new Set();
+    const userWords = userText.split(/\s+/).filter(Boolean);
+    const webWords = new Set(webText.split(/\s+/).filter(Boolean));
+    const changed = new Set();
+    userWords.forEach((word) => {
+      // Word is "changed" if it doesn't appear in the web source (paraphrased)
+      if (!webWords.has(word)) {
+        changed.add(word);
+      }
+    });
+    return changed;
+  }, []);
+
   const buildHighlightedDocument = useCallback((text, matches) => {
     if (!text || !matches || matches.length === 0) return [{ type: 'text', content: text }];
 
@@ -164,46 +179,72 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     matches.forEach((match, sourceIndex) => {
       const userText = match.user_matched_text || '';
       if (!userText) return;
-      const pos = text.indexOf(userText);
-      if (pos === -1) return;
-      regions.push({
-        start: pos,
-        end: pos + userText.length,
-        sourceIndex,
-        match,
-      });
+
+      // Try exact match first
+      let pos = text.indexOf(userText);
+      if (pos !== -1) {
+        regions.push({
+          start: pos,
+          end: pos + userText.length,
+          sourceIndex,
+          match,
+        });
+        return;
+      }
+
+      // Fuzzy match: try to find a substantial substring
+      // For long texts, try matching by sentences/lines
+      const lines = userText.split(/\n+/).filter(l => l.trim().length > 20);
+      for (const line of lines) {
+        const linePos = text.indexOf(line.trim());
+        if (linePos !== -1) {
+          regions.push({
+            start: linePos,
+            end: linePos + line.trim().length,
+            sourceIndex,
+            match,
+          });
+        }
+      }
     });
 
     // Sort by start position
     regions.sort((a, b) => a.start - b.start);
 
-    // Remove overlaps — keep higher-scoring match
+    // Merge overlapping regions from the same source, keep higher score for different sources
     const filtered = [];
     for (const region of regions) {
       const last = filtered[filtered.length - 1];
-      if (last && region.start < last.end) {
-        // Overlap: keep higher score
-        if ((region.match.similarity_score || 0) > (last.match.similarity_score || 0)) {
+      if (last && region.start <= last.end) {
+        if (region.sourceIndex === last.sourceIndex) {
+          // Same source: merge (extend)
+          last.end = Math.max(last.end, region.end);
+        } else if ((region.match.similarity_score || 0) > (last.match.similarity_score || 0)) {
           filtered[filtered.length - 1] = region;
         }
-        // else skip this region
       } else {
         filtered.push(region);
       }
     }
 
-    // Build segments
+    // Build segments with word-level change detection
     const segments = [];
     let cursor = 0;
     for (const region of filtered) {
       if (region.start > cursor) {
         segments.push({ type: 'text', content: text.slice(cursor, region.start) });
       }
+
+      // Find words that differ between user text and web source
+      const highlightContent = text.slice(region.start, region.end);
+      const changedWords = findChangedWords(highlightContent, region.match.matched_text || '');
+
       segments.push({
         type: 'highlight',
-        content: text.slice(region.start, region.end),
+        content: highlightContent,
         sourceIndex: region.sourceIndex,
         match: region.match,
+        changedWords,
       });
       cursor = region.end;
     }
@@ -212,7 +253,7 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     }
 
     return segments;
-  }, []);
+  }, [findChangedWords]);
 
   const scrollToSource = useCallback((index) => {
     setActiveSourceIndex(index);
@@ -281,16 +322,8 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
 
     setError('');
 
-    // TXT files: read client-side (fast, no server round-trip)
-    if (fileExt === 'txt') {
-      const reader = new FileReader();
-      reader.onload = (event) => setText(event.target.result);
-      reader.onerror = () => setError('Failed to read the text file.');
-      reader.readAsText(file);
-      return;
-    }
-
-    // PDF/DOCX files: send to backend for extraction
+    // All files: send to backend for extraction (handles encoding detection for Sinhala)
+    // PDF/DOCX/TXT files: send to backend for extraction
     setFileUploading((prev) => ({ ...prev, [textType]: true }));
 
     try {
@@ -831,7 +864,31 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                                           >
                                             {seg.sourceIndex + 1}
                                           </span>
-                                          {seg.content}
+                                          {/* Render words with changed-word highlighting */}
+                                          {seg.changedWords && seg.changedWords.size > 0 ? (
+                                            seg.content.split(/(\s+)/).map((word, wi) => {
+                                              if (/^\s+$/.test(word)) return <span key={wi}>{word}</span>;
+                                              return seg.changedWords.has(word) ? (
+                                                <span
+                                                  key={wi}
+                                                  className="changed-word"
+                                                  style={{
+                                                    backgroundColor: 'rgba(255, 193, 7, 0.5)',
+                                                    borderBottom: '2px solid #ffc107',
+                                                    borderRadius: '2px',
+                                                    padding: '0 1px',
+                                                  }}
+                                                  title="Semantically changed word"
+                                                >
+                                                  {word}
+                                                </span>
+                                              ) : (
+                                                <span key={wi}>{word}</span>
+                                              );
+                                            })
+                                          ) : (
+                                            seg.content
+                                          )}
                                         </span>
                                       )
                                     )
