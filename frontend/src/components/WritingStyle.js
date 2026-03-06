@@ -9,31 +9,39 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
   const [apiResult, setApiResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleAnalyze = async () => {
-    if (!originalText.trim()) {
+  // PANEL REQUIREMENT: Interactive Word Replacement
+  // This function allows the user to manually normalize the style
+  const handleReplace = (originalWord, replacement) => {
+    // Replace the specific formal word in the source text
+    const updatedText = originalText.replace(originalWord, replacement);
+    setOriginalText(updatedText);
+    
+    // Auto-analyze the updated text
+    setTimeout(() => {
+      analyzeText(updatedText);
+    }, 300);
+  };
+
+  // Auto-analyze helper function
+  const analyzeText = async (textToAnalyze) => {
+    if (!textToAnalyze.trim()) {
       setErrorMessage("Please enter text to analyze.");
       return;
     }
 
     setIsLoading(true);
     setErrorMessage('');
-    setApiResult(null);
 
     try {
       const response = await fetch('http://127.0.0.1:8000/api/check-wsa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: originalText }),
+        body: JSON.stringify({ text: textToAnalyze }),
       });
 
       if (!response.ok) throw new Error("Server communication failed.");
       const data = await response.json();
-      
-      // Debug: log the response
       console.log("✅ API Response:", data);
-      console.log("✅ Has ratio_data:", !!data?.ratio_data);
-      
-      // Store the result which now contains ratio_data
       setApiResult(data);
     } catch (error) {
       console.error("❌ Error:", error);
@@ -41,6 +49,36 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Copy output text to clipboard
+  const handleCopy = () => {
+    if (!apiResult?.ratio_data?.sentence_map) {
+      setErrorMessage("Nothing to copy. Please analyze text first.");
+      return;
+    }
+
+    const textToCopy = apiResult.ratio_data.sentence_map
+      .map(s => s.words?.map(w => w.text).join('') || '')
+      .join('\n');
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      alert('✅ Text copied to clipboard!');
+    }).catch(() => {
+      setErrorMessage('Failed to copy text.');
+    });
+  };
+
+  // Clear input and refresh
+  const handleClear = () => {
+    setOriginalText('');
+    setApiResult(null);
+    setErrorMessage('');
+    window.location.reload();
+  };
+
+  const handleAnalyze = async () => {
+    await analyzeText(originalText);
   };
 
   return (
@@ -63,10 +101,12 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
               <button className="ws-analyze-btn" onClick={handleAnalyze} disabled={isLoading}>
                 {isLoading ? 'Analyzing...' : 'Analyze Style'}
               </button>
+              <button className="ws-clear-btn" onClick={handleClear}>
+                Clear Input
+              </button>
             </div>
           </div>
 
-          {/* FIXED: Using Optional Chaining and deep pathing */}
           {apiResult?.ratio_data && (
             <div className="ws-result-container fade-in">
               <div className="ws-result-card">
@@ -92,29 +132,48 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
               </div>
 
               <div className="ws-highlight-box">
-                <h3 className="ws-result-label">Granular Stylistic Analysis</h3>
+                <div className="ws-header-with-copy">
+                  <h3 className="ws-result-label">Granular Stylistic Analysis</h3>
+                  <button className="ws-copy-btn" onClick={handleCopy} title="Copy analyzed text">
+                    📋 Copy
+                  </button>
+                </div>
                 <div className="ws-text-display">
-                  {/* Mapping through ratio_data.sentence_map to prevent crash */}
                   {apiResult.ratio_data.sentence_map?.map((s) => (
                     <span 
                       key={s.id} 
                       className={s.is_outlier ? "ws-sentence-flagged" : "ws-sentence-normal"}
                     >
-                      {/* Mapping through individual words for wavy underlines */}
-                      {s.words?.map((word, idx) => (
-                        <span 
-                          key={idx} 
-                          className={word.is_style_shift ? "ws-word-formal" : ""}
-                        >
-                          {word.text}{' '}
-                        </span>
-                      ))}
+                      
+{s.words?.map((word, idx) => (
+  <span key={idx} className="ws-interactive-word-wrapper">
+    <span className={word.is_style_shift ? "ws-word-formal" : ""}>
+      {word.text}{' '}
+    </span>
+
+    {/* TOOLTIP LOGIC */}
+    {word.is_style_shift && word.suggestions?.length > 0 && (
+      <div className="ws-synonym-popover">
+        <div className="popover-title">Suggestions:</div>
+        {word.suggestions.map((syn, sIdx) => (
+          <button 
+            key={sIdx} 
+            className="synonym-item-btn"
+            onClick={() => handleReplace(word.text.trim(), syn)}
+          >
+            {syn}
+          </button>
+        ))}
+      </div>
+    )}
+  </span>
+))}
                     </span>
                   ))}
                 </div>
                 <div className="ws-legend">
-                   <div className="legend-item"><span className="box flagged-bg"></span> Sentence Level Outlier</div>
-                   <div className="legend-item"><span className="wavy-line">~~~~</span> Morphological Complexity</div>
+                   <div className="legend-item"><span className="box flagged-bg"></span> Sentence Outlier</div>
+                   <div className="legend-item"><span className="wavy-line">~~~~</span> Formal Shift (Hover to Replace)</div>
                 </div>
               </div>
             </div>
