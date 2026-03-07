@@ -3,3 +3,11 @@ uvicorn[standard]
 sentence-transformers
 scikit-learn
 numpy
+mysql-connector-python
+joblib
+aiohttp
+trafilatura
+duckduckgo-search
+playwright
+flask
+flask-cors

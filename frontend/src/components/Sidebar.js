@@ -40,7 +40,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           </a>
 
           <a
-            href="#/writing-style-1"
+            href="#/writing-style"
             className="sidebar-item"
             onClick={() => setSidebarOpen(false)}
           >
@@ -71,7 +71,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
       <div className="sidebar-footer">
         <div className="sidebar-divider"></div>
-        <p className="sidebar-credit">© 2024 Sinhala Plagiarism Tool</p>
+        <p className="sidebar-credit">© 2026 Sinhala Plagiarism Tool</p>
       </div>
     </aside>
   );
