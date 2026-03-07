@@ -33,7 +33,7 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
     setErrorMessage('');
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/check-wsa', {
+      const response = await fetch('http://127.0.0.1:5000/api/check-wsa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: textToAnalyze }),
@@ -146,7 +146,7 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
                     >
                       
 {s.words?.map((word, idx) => (
-  <span key={idx} className="ws-interactive-word-wrapper">
+  <span key={`word-${s.id}-${idx}`} className="ws-interactive-word-wrapper">
     <span className={word.is_style_shift ? "ws-word-formal" : ""}>
       {word.text}{' '}
     </span>
@@ -157,7 +157,7 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
         <div className="popover-title">Suggestions:</div>
         {word.suggestions.map((syn, sIdx) => (
           <button 
-            key={sIdx} 
+            key={`syn-${s.id}-${idx}-${sIdx}`} 
             className="synonym-item-btn"
             onClick={() => handleReplace(word.text.trim(), syn)}
           >

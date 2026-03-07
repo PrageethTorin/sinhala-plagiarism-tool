@@ -3,10 +3,10 @@ import joblib
 import numpy as np
 import pickle
 from sklearn.metrics.pairwise import cosine_similarity
-from wsa_web_scraper import get_internet_resources, scrape_url_content, clean_text
-from extractor import StyleExtractor
-from db_bridge import DBBridge
-from synonym_map import get_synonyms  # Essential for the panel's "popped" suggestion requirement
+from .wsa_web_scraper import get_internet_resources, scrape_url_content, clean_text
+from .extractor import StyleExtractor
+from .db_bridge import DBBridge
+from .synonym_map import get_synonyms  # Essential for the panel's "popped" suggestion requirement
 
 class WSAAnalyzer:
     def __init__(self):
