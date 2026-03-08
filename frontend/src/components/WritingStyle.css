@@ -227,10 +227,13 @@
 
 /* Sentence Level: Background tint for outlier sentences */
 .ws-sentence-flagged {
-  background: rgba(255, 82, 82, 0.12);
-  border-radius: 4px;
-  padding: 2px 4px;
-  transition: background 0.3s ease;
+  text-decoration: underline;
+  text-decoration-color: #ff5252;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+  border-bottom: 2px solid rgba(255, 82, 82, 0.55);
+  padding-bottom: 2px;
+  border-radius: 2px;
 }
 
 /* Legend Section */

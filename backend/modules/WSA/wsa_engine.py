@@ -62,9 +62,9 @@ class WSAAnalyzer:
             if not sentences:
                 return {"ratio_data": {"style_change_ratio": 0, "matched_url": "No source found", "sentence_map": []}}
 
-            # Establish initial writing style baseline
-            base_len = np.mean([len(s.split()) for s in sentences[:2]])
-            base_ttr = np.mean([self.calculate_ttr(s) for s in sentences[:2]])
+            # Whole-text sentence length baseline
+            sentence_lengths = [len(s.split()) for s in sentences]
+            avg_sentence_len = float(np.mean(sentence_lengths)) if sentence_lengths else 0.0
             
             sentence_map = []
             flagged_words_count = 0
@@ -93,14 +93,16 @@ class WSAAnalyzer:
                         "suggestions": word_suggestions  # For hover popover
                     })
 
-                # Sentence level statistical anomaly detection
-                is_outlier = False if i < 2 else bool(abs(len(words_in_sent) - base_len) > (base_len * 0.25))
+                # Sentence level rule:
+                # underline full sentence if its length is higher than whole-text average
+                is_high_length_sentence = bool(len(words_in_sent) > avg_sentence_len)
                 
                 sentence_map.append({
                     "id": i + 1, 
                     "text": s_text, 
                     "words": word_objects, 
-                    "is_outlier": bool(sent_has_shift or is_outlier)
+                    "is_outlier": is_high_length_sentence,
+                    "should_underline": is_high_length_sentence
                 })
 
             # 3. Final Determination & Internet Layer

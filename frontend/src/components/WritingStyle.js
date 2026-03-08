@@ -163,7 +163,7 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
                   {apiResult.ratio_data.sentence_map?.map((s) => (
                     <span 
                       key={s.id} 
-                      className={s.is_outlier ? "ws-sentence-flagged" : "ws-sentence-normal"}
+                      className={(s.should_underline ?? s.is_outlier) ? "ws-sentence-flagged" : "ws-sentence-normal"}
                     >
                       
 {s.words?.map((word, idx) => (
@@ -193,7 +193,7 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
                   ))}
                 </div>
                 <div className="ws-legend">
-                   <div className="legend-item"><span className="box flagged-bg"></span> Sentence Outlier</div>
+                   <div className="legend-item"><span className="box flagged"></span> High-Length Sentence (Underlined)</div>
                    <div className="legend-item"><span className="wavy-line">~~~~</span> Formal Shift (Hover to Replace)</div>
                 </div>
               </div>
