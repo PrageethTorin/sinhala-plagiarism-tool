@@ -49,7 +49,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           </a>
 
           <a
-            href="#/writing-style-2"
+            href="#/semantic-similarity"
             className="sidebar-item"
             onClick={() => setSidebarOpen(false)}
           >

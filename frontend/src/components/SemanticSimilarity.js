@@ -1,92 +1,202 @@
 import React, { useState } from 'react';
 import NavBar from './NavBar';
 import Sidebar from './Sidebar';
-import './SemanticSimilarity.css';
+import './WritingStyle.css';
 
-export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
-  const [file, setFile] = useState(null);
-  const [fileName, setFileName] = useState('No file chosen');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
+  const [originalText, setOriginalText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiResult, setApiResult] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setFileName(selectedFile.name);
-    }
+  // PANEL REQUIREMENT: Interactive Word Replacement
+  // This function allows the user to manually normalize the style
+  const handleReplace = (originalWord, replacement) => {
+    // Replace the specific formal word in the source text
+    const updatedText = originalText.replace(originalWord, replacement);
+    setOriginalText(updatedText);
+    
+    // Auto-analyze the updated text
+    setTimeout(() => {
+      analyzeText(updatedText);
+    }, 300);
   };
 
-  const handleCheck = async () => {
-    if (!file) {
-      alert('Please select a file');
+  // Auto-analyze helper function
+  const analyzeText = async (textToAnalyze) => {
+    if (!textToAnalyze.trim()) {
+      setErrorMessage("Please enter text to analyze.");
       return;
     }
 
-    setLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
+    setIsLoading(true);
+    setErrorMessage('');
 
-      const response = await fetch('/api/semantic/check', {
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/check-wsa', {
         method: 'POST',
-        body: formData,
-        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: textToAnalyze }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to check semantic similarity');
-      }
-
+      if (!response.ok) throw new Error("Server communication failed.");
       const data = await response.json();
-      setResult(data.score || 0);
+      console.log("✅ API Response:", data);
+      setApiResult(data);
     } catch (error) {
-      alert('Error: ' + error.message);
-      setResult(null);
+      console.error("❌ Error:", error);
+      setErrorMessage(error.message || "Connection to backend failed.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
+  // Copy output text to clipboard
+  const handleCopy = () => {
+    if (!apiResult?.ratio_data?.sentence_map) {
+      setErrorMessage("Nothing to copy. Please analyze text first.");
+      return;
+    }
+
+    const textToCopy = apiResult.ratio_data.sentence_map
+      .map(s => s.words?.map(w => w.text).join('') || '')
+      .join('\n');
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      alert('✅ Text copied to clipboard!');
+    }).catch(() => {
+      setErrorMessage('Failed to copy text.');
+    });
+  };
+
+  // Clear input and refresh
+  const handleClear = () => {
+    setOriginalText('');
+    setApiResult(null);
+    setErrorMessage('');
+    window.location.reload();
+  };
+
+  const handleAnalyze = async () => {
+    await analyzeText(originalText);
+  };
+
   return (
-    <div className="sem-wrap">
+    <div className="ws-wrap">
       <NavBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-
-      <div className="sem-body">
+      <div className="ws-body">
         <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-
-        <section className="sem-main">
-          <h1 className="sem-title">Semantic Similarity</h1>
-
-          <div className="sem-card">
-            <label className="lbl-block">Upload Document:</label>
-
-            <div className="semantic-box" />
-
-            <div className="sem-actions">
-              <input
-                type="file"
-                className="file-input"
-                onChange={handleFileChange}
-                accept=".pdf,.txt,.doc,.docx"
-              />
-
-              <span className="file-name">{fileName}</span>
-
-              <button
-                className="sem-check"
-                onClick={handleCheck}
-                disabled={loading}
-              >
-                {loading ? 'Checking...' : 'Check'}
+        <section className="ws-main">
+          <h1 className="ws-title">Writing Style Analysis</h1>
+          <div className="ws-card">
+            <textarea
+              className="ws-textbox"
+              placeholder="Paste Sinhala text here..."
+              value={originalText}
+              onChange={(e) => setOriginalText(e.target.value)}
+              disabled={isLoading}
+            />
+            {errorMessage && <div className="ws-error-message">{errorMessage}</div>}
+            <div className="ws-actions">
+              <button className="ws-analyze-btn" onClick={handleAnalyze} disabled={isLoading}>
+                {isLoading ? 'Analyzing...' : 'Analyze Style'}
+              </button>
+              <button className="ws-clear-btn" onClick={handleClear}>
+                Clear Input
               </button>
             </div>
           </div>
 
-          {result !== null && (
-            <div className="sem-result">
-              <div className="result-label">Similarity Score</div>
-              <div className="result-pill">{result}%</div>
+          {apiResult?.ratio_data && (
+            <div className="ws-result-container fade-in">
+              {/* Show percentage only if NOT unique text */}
+              {apiResult.ratio_data.match_type !== "unique" && (
+                <div className="ws-result-card">
+                  <div className="ws-result-label">Style Change Ratio</div>
+                  <div className="ws-score-pill">{apiResult.ratio_data.style_change_ratio}%</div>
+                </div>
+              )}
+
+              <div className="ws-source-card">
+                <div className="ws-source-alert">
+                  <span className="ws-icon">🔍</span> Status Report:
+                </div>
+                <div className="ws-source-link-box">
+                  {/* Show appropriate status */}
+                  {apiResult.ratio_data.match_type === "unique" ? (
+                    <span className="ws-internal-label">✓ Unique Sinhala Text - No Match Found</span>
+                  ) : apiResult.ratio_data.match_type === "internal" ? (
+                    <div>
+                      <span className="ws-internal-label">
+                        ⚠️ Internal Database Match Found
+                      </span>
+                      <div style={{ marginTop: "8px", fontSize: "12px", color: "#666" }}>
+                        <strong>DB ID:</strong> {apiResult.ratio_data.matched_db_id}
+                      </div>
+                      <div style={{ marginTop: "8px", fontSize: "12px", color: "#666", maxHeight: "60px", overflowY: "auto" }}>
+                        <strong>Matched Text:</strong> {apiResult.ratio_data.matched_text}...
+                      </div>
+                      <div style={{ marginTop: "8px", fontSize: "12px", color: "#666" }}>
+                        <strong>Similarity:</strong> {apiResult.ratio_data.similarity_score}%
+                      </div>
+                    </div>
+                  ) : apiResult.ratio_data.matched_url?.startsWith('http') ? (
+                    <a href={apiResult.ratio_data.matched_url} target="_blank" rel="noreferrer" className="ws-source-link">
+                      {apiResult.ratio_data.matched_url}
+                    </a>
+                  ) : (
+                    <span className="ws-internal-label">
+                      {apiResult.ratio_data.matched_url} ({apiResult.ratio_data.similarity_score}%)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="ws-highlight-box">
+                <div className="ws-header-with-copy">
+                  <h3 className="ws-result-label">Granular Stylistic Analysis</h3>
+                  <button className="ws-copy-btn" onClick={handleCopy} title="Copy analyzed text">
+                    📋 Copy
+                  </button>
+                </div>
+                <div className="ws-text-display">
+                  {apiResult.ratio_data.sentence_map?.map((s) => (
+                    <span 
+                      key={s.id} 
+                      className={(s.should_underline ?? s.is_outlier) ? "ws-sentence-flagged" : "ws-sentence-normal"}
+                    >
+                      
+{s.words?.map((word, idx) => (
+  <span key={`word-${s.id}-${idx}`} className="ws-interactive-word-wrapper">
+    <span className={word.is_style_shift ? "ws-word-formal" : ""}>
+      {word.text}
+    </span>
+
+    {/* TOOLTIP LOGIC */}
+    {word.is_style_shift && word.suggestions?.length > 0 && (
+      <div className="ws-synonym-popover">
+        <div className="popover-title">Suggestions:</div>
+        {word.suggestions.map((syn, sIdx) => (
+          <button 
+            key={`syn-${s.id}-${idx}-${sIdx}`} 
+            className="synonym-item-btn"
+            onClick={() => handleReplace(word.text.trim(), syn)}
+          >
+            {syn}
+          </button>
+        ))}
+      </div>
+    )}
+  </span>
+))} 
+                    </span>
+                  ))}
+                </div>
+                <div className="ws-legend">
+                   <div className="legend-item"><span className="box flagged"></span> High-Length Sentence (Underlined)</div>
+                   <div className="legend-item"><span className="wavy-line">~~~~</span> Formal Shift (Hover to Replace)</div>
+                </div>
+              </div>
             </div>
           )}
         </section>

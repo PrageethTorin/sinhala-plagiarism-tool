@@ -4,6 +4,7 @@ import Home from './components/Home';
 import Login from './components/Login';
 import Paraphrase from './components/Paraphrase';
 import Pretrained from './components/Pretrained';
+import SemanticSimilarity from './components/SemanticSimilarity';
 import WritingStyle from './components/WritingStyle';
 
 function Feature({ title }) {
@@ -38,8 +39,8 @@ function App() {
   if (path === '/pretrained') return <Pretrained sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 
   if (path === '/writing-style') return <WritingStyle sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-  if (path === '/writing-style-2') return <Feature title="Writing Style" />;
-  if (path === '/writing-style-3') return <Feature title="Writing Style" />;
+
+  if (path === '/semantic-similarity') return <SemanticSimilarity sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
   
 
   return <Home sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;

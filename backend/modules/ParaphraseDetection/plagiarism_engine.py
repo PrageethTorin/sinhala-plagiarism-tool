@@ -37,8 +37,8 @@ def check_paraphrase(source_text, suspicious_text):
     lexical_score = round(lexical_ratio * 100, 2)
 
     # --- STEP 3: BIG BRAIN (Semantic Analysis) ---
-    embeddings1 = model.encode(source_text, convert_to_tensor=True)
-    embeddings2 = model.encode(suspicious_text, convert_to_tensor=True)
+    embeddings1 = model.encode(source_text, convert_to_tensor=True, show_progress_bar=False)
+    embeddings2 = model.encode(suspicious_text, convert_to_tensor=True, show_progress_bar=False)
     
     cosine_score = util.pytorch_cos_sim(embeddings1, embeddings2)
     semantic_score = round(cosine_score.item() * 100, 2)
