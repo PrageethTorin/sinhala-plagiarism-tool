@@ -109,17 +109,38 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
 
           {apiResult?.ratio_data && (
             <div className="ws-result-container fade-in">
-              <div className="ws-result-card">
-                <div className="ws-result-label">Style Change Ratio</div>
-                <div className="ws-score-pill">{apiResult.ratio_data.style_change_ratio}%</div>
-              </div>
+              {/* Show percentage only if NOT unique text */}
+              {apiResult.ratio_data.match_type !== "unique" && (
+                <div className="ws-result-card">
+                  <div className="ws-result-label">Style Change Ratio</div>
+                  <div className="ws-score-pill">{apiResult.ratio_data.style_change_ratio}%</div>
+                </div>
+              )}
 
               <div className="ws-source-card">
                 <div className="ws-source-alert">
                   <span className="ws-icon">🔍</span> Status Report:
                 </div>
                 <div className="ws-source-link-box">
-                  {apiResult.ratio_data.matched_url?.startsWith('http') ? (
+                  {/* Show appropriate status */}
+                  {apiResult.ratio_data.match_type === "unique" ? (
+                    <span className="ws-internal-label">✓ Unique Sinhala Text - No Match Found</span>
+                  ) : apiResult.ratio_data.match_type === "internal" ? (
+                    <div>
+                      <span className="ws-internal-label">
+                        ⚠️ Internal Database Match Found
+                      </span>
+                      <div style={{ marginTop: "8px", fontSize: "12px", color: "#666" }}>
+                        <strong>DB ID:</strong> {apiResult.ratio_data.matched_db_id}
+                      </div>
+                      <div style={{ marginTop: "8px", fontSize: "12px", color: "#666", maxHeight: "60px", overflowY: "auto" }}>
+                        <strong>Matched Text:</strong> {apiResult.ratio_data.matched_text}...
+                      </div>
+                      <div style={{ marginTop: "8px", fontSize: "12px", color: "#666" }}>
+                        <strong>Similarity:</strong> {apiResult.ratio_data.similarity_score}%
+                      </div>
+                    </div>
+                  ) : apiResult.ratio_data.matched_url?.startsWith('http') ? (
                     <a href={apiResult.ratio_data.matched_url} target="_blank" rel="noreferrer" className="ws-source-link">
                       {apiResult.ratio_data.matched_url}
                     </a>
@@ -148,7 +169,7 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
 {s.words?.map((word, idx) => (
   <span key={`word-${s.id}-${idx}`} className="ws-interactive-word-wrapper">
     <span className={word.is_style_shift ? "ws-word-formal" : ""}>
-      {word.text}{' '}
+      {word.text}
     </span>
 
     {/* TOOLTIP LOGIC */}
@@ -167,7 +188,7 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
       </div>
     )}
   </span>
-))}
+))} 
                     </span>
                   ))}
                 </div>

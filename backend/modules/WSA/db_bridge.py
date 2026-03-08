@@ -53,7 +53,7 @@ class DBBridge:
         if not conn: return []
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT doc_text, embedding_blob FROM student_submissions")
+            cursor.execute("SELECT id, doc_text, embedding_blob FROM student_submissions")
             results = cursor.fetchall()
             cursor.close()
             return results

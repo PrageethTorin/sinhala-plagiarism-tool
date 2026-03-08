@@ -31,13 +31,15 @@ class WSAAnalyzer:
             # 1. Local Database Collusion Check (PRE-SAVE)
             previous_submissions = self.db.get_all_previous_submissions()
             highest_local_score = 0.0
+            matched_db_id = None
+            matched_db_text = ""
             input_clean = clean_text(input_text)
             input_vec = self.vectorizer.transform([input_clean])
             
             # Convert to 1D for dimension safety checks
             input_vec_1d = input_vec.toarray().flatten() if hasattr(input_vec, 'toarray') else input_vec.flatten()
 
-            for _, prev_vec_blob in previous_submissions:
+            for db_id, db_text, prev_vec_blob in previous_submissions:
                 try:
                     prev_vec = pickle.loads(prev_vec_blob)
                     prev_vec_1d = prev_vec.toarray().flatten() if hasattr(prev_vec, 'toarray') else prev_vec.flatten()
@@ -50,6 +52,8 @@ class WSAAnalyzer:
                     sim = float(cosine_similarity(input_vec.reshape(1,-1), prev_vec.reshape(1,-1))[0][0])
                     if sim > highest_local_score:
                         highest_local_score = sim
+                        matched_db_id = db_id
+                        matched_db_text = db_text[:200]  # Store first 200 chars for display
                 except Exception:
                     continue
 
@@ -122,12 +126,16 @@ class WSAAnalyzer:
 
             # Determine final source and status
             final_score = max(highest_local_score, max_web_sim)
+            match_type = "unique"
             if final_score < 0.40:
                 final_url = "Unique Sinhala text"
+                match_type = "unique"
             elif highest_local_score >= max_web_sim:
-                final_url = "Internal Database Match (Previous Student Submission)"
+                final_url = f"Internal Database Match - DB ID: {matched_db_id}"
+                match_type = "internal"
             else:
                 final_url = best_url
+                match_type = "web"
 
             # 4. SAVE NEW FINGERPRINT LAST
             if highest_local_score < 0.95:
@@ -139,7 +147,10 @@ class WSAAnalyzer:
                     "style_change_ratio": round((flagged_words_count / len(all_words_in_doc)) * 100, 2) if all_words_in_doc else 0,
                     "matched_url": final_url,
                     "similarity_score": round(final_score * 100, 2),
-                    "sentence_map": sentence_map
+                    "sentence_map": sentence_map,
+                    "match_type": match_type,
+                    "matched_db_id": matched_db_id,
+                    "matched_text": matched_db_text
                 }
             }
         except Exception as e:

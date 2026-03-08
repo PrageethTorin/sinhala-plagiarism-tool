@@ -214,6 +214,7 @@
   line-height: 2.6; /* Essential for Wavy lines and Sinhala vowel signs */
   font-size: 19px;
   text-align: left;
+  word-spacing: 0.3em; /* Proper spacing between words for Sinhala readability */
 }
 
 /* Word Level: Red Wavy Underline for expert shifts */
@@ -293,6 +294,7 @@
 .ws-interactive-word-wrapper {
     position: relative;
     display: inline-block;
+    margin-right: 0.4em; /* Extra spacing after each word for Sinhala readability */
 }
 
 /* Wavy underline for formal words */
