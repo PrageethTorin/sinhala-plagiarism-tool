@@ -81,6 +81,13 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
     await analyzeText(originalText);
   };
 
+  const needsAutoSpace = (currentToken, nextToken) => {
+    if (!nextToken) return false;
+    if (/\s$/.test(currentToken || '')) return false;
+    if (/^[,.;:!?…)}\]]/.test(nextToken || '')) return false;
+    return true;
+  };
+
   return (
     <div className="ws-wrap">
       <NavBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
@@ -166,29 +173,37 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
                       className={(s.should_underline ?? s.is_outlier) ? "ws-sentence-flagged" : "ws-sentence-normal"}
                     >
                       
-{s.words?.map((word, idx) => (
-  <span key={`word-${s.id}-${idx}`} className="ws-interactive-word-wrapper">
-    <span className={word.is_style_shift ? "ws-word-formal" : ""}>
-      {word.text}
-    </span>
+{s.words?.map((word, idx) => {
+  const nextWordText = s.words?.[idx + 1]?.text || '';
+  const insertSpace = needsAutoSpace(word.text, nextWordText);
 
-    {/* TOOLTIP LOGIC */}
-    {word.is_style_shift && word.suggestions?.length > 0 && (
-      <div className="ws-synonym-popover">
-        <div className="popover-title">Suggestions:</div>
-        {word.suggestions.map((syn, sIdx) => (
-          <button 
-            key={`syn-${s.id}-${idx}-${sIdx}`} 
-            className="synonym-item-btn"
-            onClick={() => handleReplace(word.text.trim(), syn)}
-          >
-            {syn}
-          </button>
-        ))}
-      </div>
-    )}
-  </span>
-))} 
+  return (
+    <React.Fragment key={`word-${s.id}-${idx}`}>
+      <span className="ws-interactive-word-wrapper">
+        <span className={word.is_style_shift ? "ws-word-formal" : ""}>
+          {word.text}
+        </span>
+
+        {/* TOOLTIP LOGIC */}
+        {word.is_style_shift && word.suggestions?.length > 0 && (
+          <div className="ws-synonym-popover">
+            <div className="popover-title">Suggestions:</div>
+            {word.suggestions.map((syn, sIdx) => (
+              <button
+                key={`syn-${s.id}-${idx}-${sIdx}`}
+                className="synonym-item-btn"
+                onClick={() => handleReplace(word.replace_target || word.text.trim(), syn)}
+              >
+                {syn}
+              </button>
+            ))}
+          </div>
+        )}
+      </span>
+      {insertSpace ? ' ' : ''}
+    </React.Fragment>
+  );
+})}
                     </span>
                   ))}
                 </div>

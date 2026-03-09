@@ -2,6 +2,7 @@ import os
 import joblib
 import numpy as np
 import pickle
+import re
 from sklearn.metrics.pairwise import cosine_similarity
 from .wsa_web_scraper import get_internet_resources, scrape_url_content, clean_text
 from .extractor import StyleExtractor
@@ -21,6 +22,23 @@ class WSAAnalyzer:
         words = text.split()
         if not words: return 0
         return (len(set(words)) / len(words)) * 100
+
+    def split_sentences_preserve_punctuation(self, text):
+        """Split text into sentences while keeping ending punctuation marks."""
+        if not text:
+            return []
+        chunks = re.findall(r'[^.!?…]+[.!?…]*', text, flags=re.UNICODE)
+        return [chunk.strip() for chunk in chunks if chunk and chunk.strip()]
+
+    def tokenize_sentence_preserve_format(self, sentence):
+        """Tokenize sentence preserving punctuation and original spacing."""
+        # Each token keeps trailing spaces, so frontend renders original formatting.
+        return re.findall(r'\S+\s*', sentence, flags=re.UNICODE)
+
+    def normalize_token_for_analysis(self, token):
+        """Return clean lexical word for style detection/synonym lookup."""
+        clean = re.sub(r'^[^\w\u0D80-\u0DFF]+|[^\w\u0D80-\u0DFF]+$', '', token, flags=re.UNICODE)
+        return clean.strip()
 
     async def check_text(self, input_text):
         """
@@ -58,13 +76,14 @@ class WSAAnalyzer:
                     continue
 
             # 2. Stylistic & Morphological Analysis
-            sentences = [s.strip() for s in input_text.split('.') if len(s.strip()) > 5]
+            sentences = [s for s in self.split_sentences_preserve_punctuation(input_text) if len(s.strip()) > 5]
             if not sentences:
                 return {"ratio_data": {"style_change_ratio": 0, "matched_url": "No source found", "sentence_map": []}}
 
             # Whole-text sentence length baseline
-            sentence_lengths = [len(s.split()) for s in sentences]
+            sentence_lengths = [len(re.findall(r'\S+', s, flags=re.UNICODE)) for s in sentences]
             avg_sentence_len = float(np.mean(sentence_lengths)) if sentence_lengths else 0.0
+            outlier_tolerance = max(2.0, avg_sentence_len * 0.25)
             
             sentence_map = []
             flagged_words_count = 0
@@ -72,30 +91,42 @@ class WSAAnalyzer:
             avg_word_len = np.mean([len(w) for w in all_words_in_doc]) if all_words_in_doc else 5.0
 
             for i, s_text in enumerate(sentences):
-                words_in_sent = s_text.split()
+                tokens_in_sent = self.tokenize_sentence_preserve_format(s_text)
+                word_count_in_sent = len(re.findall(r'\S+', s_text, flags=re.UNICODE))
                 word_objects = []
-                sent_has_shift = False
 
-                for w in words_in_sent:
+                for token in tokens_in_sent:
+                    analysis_word = self.normalize_token_for_analysis(token)
+
+                    # Skip pure punctuation tokens
+                    if not analysis_word:
+                        word_objects.append({
+                            "text": token,
+                            "replace_target": "",
+                            "is_style_shift": False,
+                            "suggestions": []
+                        })
+                        continue
+
                     # Detect if word uses expert academic morphology
-                    is_shift = self.extractor.is_word_a_style_shift(w, avg_word_len)
+                    is_shift = self.extractor.is_word_a_style_shift(analysis_word, avg_word_len)
                     
                     if is_shift:
                         flagged_words_count += 1
-                        sent_has_shift = True
                     
                     # PANEL REQUIREMENT: Fetch suggestions for hover-popped replacement
-                    word_suggestions = get_synonyms(w.strip()) if is_shift else []
+                    word_suggestions = get_synonyms(analysis_word) if is_shift else []
                     
                     word_objects.append({
-                        "text": w,
+                        "text": token,
+                        "replace_target": analysis_word,
                         "is_style_shift": is_shift,
                         "suggestions": word_suggestions  # For hover popover
                     })
 
                 # Sentence level rule:
-                # underline full sentence if its length is higher than whole-text average
-                is_high_length_sentence = bool(len(words_in_sent) > avg_sentence_len)
+                # underline only when sentence is meaningfully higher than average
+                is_high_length_sentence = bool(word_count_in_sent > (avg_sentence_len + outlier_tolerance))
                 
                 sentence_map.append({
                     "id": i + 1, 

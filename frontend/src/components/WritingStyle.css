@@ -215,6 +215,7 @@
   font-size: 19px;
   text-align: left;
   word-spacing: 0.3em; /* Proper spacing between words for Sinhala readability */
+  white-space: pre-wrap;
 }
 
 /* Word Level: Red Wavy Underline for expert shifts */
@@ -297,7 +298,7 @@
 .ws-interactive-word-wrapper {
     position: relative;
     display: inline-block;
-    margin-right: 0.4em; /* Extra spacing after each word for Sinhala readability */
+  margin-right: 0;
 }
 
 /* Wavy underline for formal words */
