@@ -131,7 +131,18 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
                 <div className="ws-source-link-box">
                   {/* Show appropriate status */}
                   {apiResult.ratio_data.match_type === "unique" ? (
-                    <span className="ws-internal-label">✓ Unique Sinhala Text - No Match Found</span>
+                    <div>
+                      <span className="ws-internal-label">✓ Unique Sinhala Text - No Match Found</span>
+                      {apiResult.ratio_data.web_matched_url?.startsWith('http') && (
+                        <div style={{ marginTop: "8px", fontSize: "12px", color: "#7ec2c0" }}>
+                          <strong>Web Source Candidate:</strong>{' '}
+                          <a href={apiResult.ratio_data.web_matched_url} target="_blank" rel="noreferrer" className="ws-source-link">
+                            {apiResult.ratio_data.web_matched_url}
+                          </a>
+                          {' '}({apiResult.ratio_data.web_similarity_score ?? 0}%)
+                        </div>
+                      )}
+                    </div>
                   ) : apiResult.ratio_data.match_type === "internal" ? (
                     <div>
                       <span className="ws-internal-label">
@@ -146,6 +157,15 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
                       <div style={{ marginTop: "8px", fontSize: "12px", color: "#666" }}>
                         <strong>Similarity:</strong> {apiResult.ratio_data.similarity_score}%
                       </div>
+                      {apiResult.ratio_data.web_matched_url?.startsWith('http') && (
+                        <div style={{ marginTop: "8px", fontSize: "12px", color: "#7ec2c0" }}>
+                          <strong>Web Source Candidate:</strong>{' '}
+                          <a href={apiResult.ratio_data.web_matched_url} target="_blank" rel="noreferrer" className="ws-source-link">
+                            {apiResult.ratio_data.web_matched_url}
+                          </a>
+                          {' '}({apiResult.ratio_data.web_similarity_score ?? 0}%)
+                        </div>
+                      )}
                     </div>
                   ) : apiResult.ratio_data.matched_url?.startsWith('http') ? (
                     <a href={apiResult.ratio_data.matched_url} target="_blank" rel="noreferrer" className="ws-source-link">

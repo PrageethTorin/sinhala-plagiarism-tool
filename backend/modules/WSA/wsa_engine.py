@@ -139,10 +139,13 @@ class WSAAnalyzer:
             # 3. Final Determination & Internet Layer
             max_web_sim = 0.0
             best_url = "No source found"
+            web_candidate_url = ""
             
             # Only search internet if no high-match local database collusion is found
             if highest_local_score < 0.90:
                 links = await get_internet_resources(input_clean[:150], num_results=2)
+                if links:
+                    web_candidate_url = links[0]
                 for url in links:
                     try:
                         content = await scrape_url_content(url)
@@ -180,6 +183,8 @@ class WSAAnalyzer:
                     "style_change_ratio": round((flagged_words_count / len(all_words_in_doc)) * 100, 2) if all_words_in_doc else 0,
                     "matched_url": final_url,
                     "similarity_score": round(final_score * 100, 2),
+                    "web_matched_url": best_url if best_url.startswith("http") else web_candidate_url,
+                    "web_similarity_score": round(max_web_sim * 100, 2),
                     "sentence_map": sentence_map,
                     "match_type": match_type,
                     "matched_db_id": matched_db_id,
