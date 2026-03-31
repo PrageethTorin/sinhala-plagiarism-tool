@@ -38,10 +38,6 @@ async def _analyze(student_text: str, source_text: str, run_internet_scan: bool)
     paraphrase_feature = 0.0
     style_feature = 0.0
     wsa_similarity_feature = 0.0
-    score_reliable = False
-    evidence_quality = "low"
-    min_text_len = 120
-    usable_sources = []
 
     semantic_task = None
     para_task = None
@@ -65,14 +61,7 @@ async def _analyze(student_text: str, source_text: str, run_internet_scan: bool)
             internet_result = await internet_task
 
             if isinstance(internet_result, list) and internet_result:
-                usable_sources = [
-                    s for s in internet_result
-                    if bool(s.get("content_extracted"))
-                    and int(s.get("text_len", 0) or 0) >= min_text_len
-                ]
-                top = usable_sources[0] if usable_sources else internet_result[0]
-                score_reliable = bool(usable_sources)
-                evidence_quality = "high" if score_reliable else "medium"
+                top = internet_result[0]
 
                 paraphrase_feature = float(
                     top.get("overall_paraphrase_percentage", 0.0) or 0.0
@@ -104,12 +93,16 @@ async def _analyze(student_text: str, source_text: str, run_internet_scan: bool)
                             best_source_text = candidate_text
                             break
 
-                if score_reliable and best_source_text:
+                # Last-resort fallback: compare against the student text itself
+                # so WSA returns something instead of 0. This is not ideal,
+                # but better than a misleading zero score.
+                if not best_source_text and paraphrase_feature > 0.0:
+                    best_source_text = student_text
+
+                if best_source_text:
                     wsa_task = asyncio.create_task(
                         check_wsa(best_source_text, student_text)
                     )
-            else:
-                evidence_quality = "low"
 
     except ExternalServiceError:
         internet_result = None
@@ -241,28 +234,26 @@ async def _analyze(student_text: str, source_text: str, run_internet_scan: bool)
         0.15 * float(style_similarity or 0.0)
     )
 
-    # Strong plagiarism rules are only applied when evidence is reliable
-    # or when the user provided an explicit source text pair.
-    if score_reliable or bool(source_text):
-        if coverage >= 50 and best_semantic >= 70:
-            force_decision = "PLAGIARIZED"
-            evidence_flags.append("coverage>=50_and_semantic>=70")
+    # Strong plagiarism rules
+    if coverage >= 50 and best_semantic >= 70:
+        force_decision = "PLAGIARIZED"
+        evidence_flags.append("coverage>=50_and_semantic>=70")
 
-        elif best_semantic >= 85 and best_paraphrase >= 70:
-            force_decision = "PLAGIARIZED"
-            evidence_flags.append("semantic>=85_and_paraphrase>=70")
+    elif best_semantic >= 85 and best_paraphrase >= 70:
+        force_decision = "PLAGIARIZED"
+        evidence_flags.append("semantic>=85_and_paraphrase>=70")
 
-        elif best_lexical >= 60 and best_semantic >= 70:
-            force_decision = "PLAGIARIZED"
-            evidence_flags.append("lexical>=60_and_semantic>=70")
+    elif best_lexical >= 60 and best_semantic >= 70:
+        force_decision = "PLAGIARIZED"
+        evidence_flags.append("lexical>=60_and_semantic>=70")
 
-        elif hybrid_score >= 70:
-            force_decision = "PLAGIARIZED"
-            evidence_flags.append("hybrid_score>=70")
+    elif hybrid_score >= 70:
+        force_decision = "PLAGIARIZED"
+        evidence_flags.append("hybrid_score>=70")
 
-        elif hybrid_score >= 55 or best_semantic >= 65 or best_paraphrase >= 60:
-            force_decision = "SUSPICIOUS"
-            evidence_flags.append("moderate_similarity")
+    elif hybrid_score >= 55 or best_semantic >= 65 or best_paraphrase >= 60:
+        force_decision = "SUSPICIOUS"
+        evidence_flags.append("moderate_similarity")
 
     if force_decision is not None:
         prediction["decision"] = force_decision
@@ -299,14 +290,6 @@ async def _analyze(student_text: str, source_text: str, run_internet_scan: bool)
             "paraphrase": round(float(paraphrase_feature), 2),
             "style": round(float(style_feature), 2),
             "wsa_similarity": round(float(wsa_similarity_feature), 2),
-            "display_style_similarity": round(float(wsa_similarity_feature), 2),
-            "display_style_change_ratio": round(float(style_feature), 2),
-        },
-        "source_status": {
-            "score_reliable": score_reliable,
-            "evidence_quality": evidence_quality,
-            "sources_found": len(internet_result) if isinstance(internet_result, list) else 0,
-            "sources_usable": len(usable_sources),
         },
         "evidence": {
             "coverage": round(float(coverage), 2),

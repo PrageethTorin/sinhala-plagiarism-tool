@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import NavBar from './NavBar';
 import Sidebar from './Sidebar';
 import './Pretrained.css';
@@ -10,6 +10,16 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
   const [runInternetScan, setRunInternetScan] = useState(true);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+
+  const showToast = (message, type = 'info') => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToast({ message, type });
+    toastTimerRef.current = setTimeout(() => setToast(null), 3500);
+  };
 
   const buildApiBases = () => {
     const envBase = process.env.REACT_APP_GATEWAY_URL;
@@ -116,8 +126,9 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
           url: item.url,
           type: 'Internet Match',
           score: item.overall_paraphrase_percentage ?? null,
+          reliable: Boolean(item.content_extracted),
           preview: null,
-          textLen: null,
+          textLen: item.text_len ?? null,
         });
       });
     }
@@ -129,6 +140,7 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
           url: item.url,
           type: 'Writing Style Source',
           score: null,
+          reliable: Boolean((item.text_len || 0) >= 120),
           preview: item.preview || null,
           textLen: item.text_len || null,
         });
@@ -144,6 +156,7 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
         url: res.wsa_result.matched_url,
         type: 'Best Style Match',
         score: res?.wsa_result?.similarity_score ?? null,
+        reliable: true,
         preview: null,
         textLen: null,
       });
@@ -154,7 +167,14 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
       if (!uniq.has(s.url)) uniq.set(s.url, s);
     }
 
-    return Array.from(uniq.values());
+    return Array.from(uniq.values()).sort((a, b) => {
+      const ar = a.reliable ? 1 : 0;
+      const br = b.reliable ? 1 : 0;
+      if (ar !== br) return br - ar;
+      const as = Number(a.score ?? -1);
+      const bs = Number(b.score ?? -1);
+      return bs - as;
+    });
   };
 
   const splitIntoSentences = (raw) => {
@@ -165,6 +185,13 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
       .map((s) => s.trim())
       .filter(Boolean);
   };
+
+  const normalizeSentence = (s) =>
+    String(s || '')
+      .replace(/\s+/g, ' ')
+      .replace(/[.?!à¥¤]+$/g, '')
+      .trim()
+      .toLowerCase();
 
   const buildSentenceHighlights = (res, sourceText) => {
     const sentences = splitIntoSentences(sourceText);
@@ -177,6 +204,7 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
           item.detailed_matches.forEach((m) => {
             detailedMatches.push({
               sentenceIndex: m?.sentenceIndex ?? m?.idx,
+              studentSentence: m?.student_sentence ?? null,
               score: m?.score ?? m?.similarity ?? item?.overall_paraphrase_percentage ?? 0,
               url: item?.url || null,
             });
@@ -185,10 +213,54 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
       });
     }
 
+    // DB mode: use paraphrase detailed matches when available.
+    if (Array.isArray(res?.paraphrase_result?.detailed_matches)) {
+      res.paraphrase_result.detailed_matches.forEach((m) => {
+        detailedMatches.push({
+          sentenceIndex: m?.sentenceIndex ?? m?.idx,
+          studentSentence: m?.student_sentence ?? null,
+          score: m?.paraphrase_score ?? m?.score ?? 0,
+          url: null,
+        });
+      });
+    }
+
+    // DB mode fallback: map WSA sentence_map entries using overall WSA similarity.
+    // Only apply when similarity is reasonably strong to avoid noisy highlights.
+    if (
+      detailedMatches.length === 0 &&
+      Array.isArray(res?.wsa_result?.sentence_map) &&
+      Number(res?.features?.wsa_similarity ?? res?.wsa_result?.similarity_score ?? 0) >= 60
+    ) {
+      const wsaScore = Number(
+        res?.features?.wsa_similarity ?? res?.wsa_result?.similarity_score ?? 0
+      );
+      res.wsa_result.sentence_map.forEach((s) => {
+        detailedMatches.push({
+          sentenceIndex: s?.id ? Number(s.id) - 1 : undefined,
+          studentSentence: s?.text ?? null,
+          score: wsaScore,
+          url: null,
+        });
+      });
+    }
+
     if (detailedMatches.length > 0) {
       const scores = sentences.map(() => ({ score: 0, url: null }));
+      const normSentences = sentences.map((s) => normalizeSentence(s));
       detailedMatches.forEach((m) => {
-        const idx = Number(m.sentenceIndex);
+        let idx = Number(m.sentenceIndex);
+        if (!Number.isFinite(idx) || idx < 0 || idx >= scores.length) {
+          const normStudent = normalizeSentence(m.studentSentence);
+          if (normStudent) {
+            idx = normSentences.findIndex((s) => s === normStudent);
+            if (idx < 0) {
+              idx = normSentences.findIndex(
+                (s) => s.includes(normStudent) || normStudent.includes(s)
+              );
+            }
+          }
+        }
         if (Number.isFinite(idx) && idx >= 0 && idx < scores.length) {
           const sc = Number(m.score || 0);
           if (sc > scores[idx].score) {
@@ -204,19 +276,12 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
       }));
     }
 
-    const fallbackScore = Math.max(
-      Number(res?.paraphrase || 0),
-      Number(res?.semantic || 0),
-      Number(res?.features?.wsa_similarity || 0)
-    );
-
+    // Do not apply fallback sentence highlighting when there are no real detailed matches.
+    // This avoids showing "fake" highlighted plagiarism in DB mode and weak-match cases.
     return sentences.map((sentence) => ({
       text: sentence,
-      score: fallbackScore,
-      sourceUrl:
-        res?.wsa_result?.matched_url && res.wsa_result.matched_url !== 'No source found'
-          ? res.wsa_result.matched_url
-          : null,
+      score: 0,
+      sourceUrl: null,
     }));
   };
 
@@ -258,16 +323,38 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setFileName(selectedFile.name);
-      setText('');
+    if (!selectedFile) return;
+
+    const allowedExtensions = ['.txt', '.pdf', '.doc', '.docx'];
+    const lowerName = selectedFile.name.toLowerCase();
+    const hasValidExtension = allowedExtensions.some((ext) => lowerName.endsWith(ext));
+    if (!hasValidExtension) {
+      showToast('Only .txt, .pdf, .doc, .docx files are allowed.', 'error');
+      e.target.value = '';
+      return;
     }
+
+    const maxSizeBytes = 10 * 1024 * 1024;
+    if (selectedFile.size > maxSizeBytes) {
+      showToast('File is too large. Maximum allowed size is 10MB.', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    setFile(selectedFile);
+    setFileName(selectedFile.name);
+    setText('');
+    showToast('File selected successfully.', 'success');
   };
 
   const handleCheck = async () => {
     if (!file && !text.trim()) {
-      alert('Please upload a file or paste text');
+      showToast('Please upload a file or paste text before analyzing.', 'warning');
+      return;
+    }
+
+    if (!file && text.trim().length < 20) {
+      showToast('Please enter at least 20 characters for analysis.', 'warning');
       return;
     }
 
@@ -292,9 +379,11 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
       }
 
       setResult(data);
+      showToast('Analysis completed successfully.', 'success');
     } catch (error) {
-      alert(
-        `Error: ${error.message || error}\n\nCheck that:\n- Gateway: 8000\n- WSA: 8001\n- Paraphrase: 5000\n- Semantic: 8002\nare running.`
+      showToast(
+        `Analysis failed: ${error.message || error}. Check services on ports 8000, 8001, 5000, 8002.`,
+        'error'
       );
       setResult(null);
     } finally {
@@ -311,6 +400,17 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
 
   const decision = String(result?.decision || '').toUpperCase();
   const overallScore = clampPct(result?.overall || 0);
+  const semanticScore = clampPct(result?.semantic || 0);
+  const paraphraseScore = clampPct(result?.paraphrase || 0);
+  const styleDisplayScore = clampPct(
+    result?.features?.wsa_similarity ?? result?.wsa_result?.similarity_score ?? result?.style ?? 0
+  );
+  const toLevel = (score) => {
+    const s = clampPct(score);
+    if (s >= 70) return 'High';
+    if (s >= 40) return 'Medium';
+    return 'Low';
+  };
 
   const verdictMeta = (() => {
     if (decision === 'PLAGIARIZED') {
@@ -322,9 +422,19 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
     return { icon: '✓', title: 'No Significant Plagiarism' };
   })();
 
+  const isDbBaseline =
+    Boolean(result?.db_mode) &&
+    (Boolean(result?.evidence?.flags?.includes?.('db_baseline_created')) ||
+      result?.matched_submission_id == null);
+
   return (
     <div className="pre-wrap">
       <NavBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      {toast && (
+        <div className={`pre-toast pre-toast-${toast.type}`} role="status" aria-live="polite">
+          {toast.message}
+        </div>
+      )}
 
       <div className="pre-body">
         <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
@@ -391,13 +501,6 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
                     )}
                   </button>
                 </div>
-
-                {!result && !loading && (
-                  <div className="pre-empty-state">
-                    <div className="empty-icon">📝</div>
-                    <p>Paste or upload text to begin analysis</p>
-                  </div>
-                )}
               </div>
 
               <div className="pre-results-column">
@@ -435,7 +538,21 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
                     </div>
 
                     <div className="pre-scores-grid">
-                      {/* Only showing Overall Score as requested */}
+                      <div className="score-card score-card-compact-metrics">
+                        <div className="mini-metric-row">
+                          <span className="mini-metric-label">Semantic</span>
+                          <span className="mini-metric-value">{toLevel(semanticScore)}</span>
+                        </div>
+                        <div className="mini-metric-row">
+                          <span className="mini-metric-label">Paraphrase</span>
+                          <span className="mini-metric-value">{toLevel(paraphraseScore)}</span>
+                        </div>
+                        <div className="mini-metric-row">
+                          <span className="mini-metric-label">Writing Style</span>
+                          <span className="mini-metric-value">{toLevel(styleDisplayScore)}</span>
+                        </div>
+                      </div>
+
                       <div className="score-card">
                         <div className="score-label">Overall Score</div>
                         <div className="score-value">{fmtPct(overallScore)}%</div>
@@ -445,38 +562,30 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
                       </div>
                     </div>
 
-                    <div className="pre-card-modern">
-                      <h4 className="gauge-title" style={{ marginBottom: 10 }}>
-                        Highlighted Document
-                      </h4>
+                    {!isDbBaseline && (
+                      <div className="pre-card-modern">
+                        <h4 className="gauge-title" style={{ marginBottom: 10 }}>
+                          Highlighted Document
+                        </h4>
 
-                      {highlightedSentences.length > 0 ? (
-                        <div style={{ lineHeight: 2 }}>
-                          {highlightedSentences.map((item, idx) => (
-                            <span key={idx} style={{ marginRight: 6 }}>
-                              <span
-                                style={highlightStyle(item.score)}
-                                title={`Match: ${fmtPct(item.score)}%`}
-                              >
-                                {item.text}
-                              </span>
-                              {item.sourceUrl ? (
-                                <a
-                                  href={item.sourceUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  style={{ marginLeft: 6, fontSize: 12 }}
+                        {highlightedSentences.length > 0 ? (
+                          <div style={{ lineHeight: 2 }}>
+                            {highlightedSentences.map((item, idx) => (
+                              <span key={idx} style={{ marginRight: 6 }}>
+                                <span
+                                  style={highlightStyle(item.score)}
+                                  title={`Match: ${fmtPct(item.score)}%`}
                                 >
-                                  source
-                                </a>
-                              ) : null}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p style={{ margin: 0 }}>No highlighted content available.</p>
-                      )}
-                    </div>
+                                  {item.text}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={{ margin: 0 }}>No highlighted content available.</p>
+                        )}
+                      </div>
+                    )}
 
                     <div className="pre-card-modern">
                       <h4 className="gauge-title" style={{ marginBottom: 10 }}>
@@ -504,6 +613,8 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
 
                                 <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 6 }}>
                                   <strong>Type:</strong> {src.type}
+                                  {' '}
+                                  | <strong>Reliability:</strong> {src.reliable ? 'High' : 'Low'}
                                   {src.score !== null && src.score !== undefined ? (
                                     <>
                                       {' '}
@@ -574,6 +685,7 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
                         </p>
                       </div>
                     )}
+
                   </div>
                 )}
               </div>
@@ -584,3 +696,4 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
     </div>
   );
 }
+

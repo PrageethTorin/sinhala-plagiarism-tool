@@ -33,7 +33,7 @@ def split_sentences(text):
     return sentences
 
 
-def pick_search_queries(text, max_queries=3, max_len=140):
+def pick_search_queries(text, max_queries=5, max_len=180):
     """
     Pick the best short sentence-level search queries from long text.
     """
@@ -49,9 +49,11 @@ def pick_search_queries(text, max_queries=3, max_len=140):
     )
 
     queries = []
+    # Prefer an exact-quote query for the first sentence to find the source page.
     first_sentence = sentences[0][:max_len]
     if first_sentence:
         queries.append(first_sentence)
+        queries.append(f"\"{first_sentence}\"")
 
     for sentence in ranked:
         q = sentence[:max_len]
@@ -91,11 +93,12 @@ def check_paraphrase(source_text, suspicious_text):
 
 
 def _merge_scores(semantic_score, lexical_score):
-    if lexical_score > 80:
+    if lexical_score > 88:
         final_score = max(semantic_score, lexical_score)
         mode = "High-Lexical"
     else:
-        final_score = (semantic_score * 0.7) + (lexical_score * 0.3)
+        # Favor semantic meaning more for synonym-heavy paraphrases.
+        final_score = (semantic_score * 0.82) + (lexical_score * 0.18)
         mode = "Hybrid"
 
     return {
@@ -116,6 +119,23 @@ def _jaccard_tokens(tokens1, tokens2):
     return len(s1 & s2) / len(s1 | s2)
 
 
+def _domain_rank(url: str) -> int:
+    ul = (url or "").lower()
+    if "si.wikipedia.org" in ul:
+        return 0
+    if ".gov.lk" in ul:
+        return 1
+    if ".ac.lk" in ul or ".edu" in ul:
+        return 2
+    if "groups.google.com" in ul or "huggingface.co/datasets" in ul:
+        return 9
+    return 5
+
+
+def _is_wikipedia(url: str) -> bool:
+    return "si.wikipedia.org/wiki/" in (url or "").lower()
+
+
 def process_single_url(url, input_sentences):
     """
     Process one website against all input sentences.
@@ -133,7 +153,7 @@ def process_single_url(url, input_sentences):
                 "content_extracted": False,
             }
 
-        web_sentences = split_sentences(web_raw_content)[:160]
+        web_sentences = split_sentences(web_raw_content)[:240]
         if not web_sentences:
             return None
 
@@ -160,7 +180,7 @@ def process_single_url(url, input_sentences):
                 range(len(web_sentences)),
                 key=lambda j: _jaccard_tokens(input_tokens[i], web_tokens[j]),
                 reverse=True,
-            )[:25]
+            )[:60]
 
             for j in ranked_candidates:
                 w_sent = web_sentences[j]
@@ -185,17 +205,25 @@ def process_single_url(url, input_sentences):
 
             best_scores.append(best_match_score)
 
-            if best_analysis and best_match_score >= 55:
+            if best_analysis and best_match_score >= 45:
                 detailed_matches.append(best_analysis)
 
         overall_score = (sum(best_scores) / len(best_scores)) if best_scores else 0.0
-        plagiarized_count = sum(1 for s in best_scores if s >= 60)
+        plagiarized_count = sum(1 for s in best_scores if s >= 55)
+        strong_matches = sum(1 for s in best_scores if s >= 75)
+        exact_or_near = sum(1 for s in best_scores if s >= 90)
+        match_density = (strong_matches / len(input_sentences)) if input_sentences else 0.0
+        exact_density = (exact_or_near / len(input_sentences)) if input_sentences else 0.0
         detailed_matches.sort(key=lambda x: x["paraphrase_score"], reverse=True)
 
         return {
             "url": url,
             "overall_paraphrase_percentage": round(overall_score, 2),
             "plagiarized_count": plagiarized_count,
+            "strong_matches": strong_matches,
+            "exact_or_near_matches": exact_or_near,
+            "match_density": round(match_density, 4),
+            "exact_density": round(exact_density, 4),
             "total_sentences": len(input_sentences),
             "detailed_matches": detailed_matches[:25],
             "source_found": True,
@@ -216,14 +244,28 @@ def check_internet_plagiarism(student_text):
         return {"error": "Input text too short."}
 
     # NEW: use sentence-based search queries instead of token soup
-    search_queries = pick_search_queries(student_text, max_queries=4, max_len=160)
+    search_queries = pick_search_queries(student_text, max_queries=5, max_len=180)
     print(f"[DISCOVERY] Search queries: {search_queries}")
 
     candidate_urls = []
     seen = set()
-    max_urls = 6 if len(input_sentences) > 3 else 4
-    per_query_results = 4 if len(input_sentences) > 3 else 3
+    max_urls = 10 if len(input_sentences) > 3 else 6
+    per_query_results = 6 if len(input_sentences) > 3 else 4
 
+    # 1) Wikipedia-first pass: check Sinhala Wikipedia sources before generic web.
+    for query in search_queries[:2]:
+        wiki_query = f'site:si.wikipedia.org "{query}"'
+        wiki_urls = get_internet_resources(wiki_query, num_results=3)
+        for url in wiki_urls:
+            if _is_wikipedia(url) and url not in seen:
+                seen.add(url)
+                candidate_urls.append(url)
+            if len(candidate_urls) >= max_urls:
+                break
+        if len(candidate_urls) >= max_urls:
+            break
+
+    # 2) Generic web pass
     for query in search_queries:
         urls = get_internet_resources(query, num_results=per_query_results)
         for url in urls:
@@ -241,7 +283,7 @@ def check_internet_plagiarism(student_text):
     url_reports = []
 
     # NEW: fewer workers for speed and stability
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         future_tasks = {
             executor.submit(process_single_url, url, input_sentences): url
             for url in candidate_urls
@@ -253,13 +295,35 @@ def check_internet_plagiarism(student_text):
                 url_reports.append(result)
 
                 # NEW: early stop if a strong result is already found
-                if result.get("overall_paraphrase_percentage", 0) >= 85:
+                if result.get("overall_paraphrase_percentage", 0) >= 92 and result.get("exact_density", 0) >= 0.5:
                     print(f"[EARLY STOP] Strong match found: {result.get('url')}")
                     break
 
     url_reports.sort(
-        key=lambda x: x['overall_paraphrase_percentage'],
-        reverse=True
+        key=lambda x: (
+            float(x.get("exact_density", 0.0)),
+            float(x.get("match_density", 0.0)),
+            float(x.get("overall_paraphrase_percentage", 0.0)),
+            -_domain_rank(x.get("url", "")),
+        ),
+        reverse=True,
     )
+
+    # If a strong Wikipedia source exists, force it to the top for final reporting.
+    wiki_strong = [
+        r for r in url_reports
+        if _is_wikipedia(r.get("url", ""))
+        and float(r.get("overall_paraphrase_percentage", 0.0)) >= 70.0
+    ]
+    if wiki_strong:
+        best_wiki = max(
+            wiki_strong,
+            key=lambda x: (
+                float(x.get("exact_density", 0.0)),
+                float(x.get("match_density", 0.0)),
+                float(x.get("overall_paraphrase_percentage", 0.0)),
+            ),
+        )
+        url_reports = [best_wiki] + [r for r in url_reports if r is not best_wiki]
 
     return url_reports[:3]

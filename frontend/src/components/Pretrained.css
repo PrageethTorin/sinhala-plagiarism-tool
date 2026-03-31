@@ -1,8 +1,41 @@
 .pre-wrap {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  background-color: #0b0715;
+  background: linear-gradient(135deg, #07040f 0%, #120a22 100%);
   color: #1f2937;
   padding-top: 72px;
+}
+
+.pre-toast {
+  position: fixed;
+  top: 88px;
+  right: 24px;
+  z-index: 1200;
+  min-width: 280px;
+  max-width: 460px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.pre-toast-info {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+}
+
+.pre-toast-success {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+}
+
+.pre-toast-warning {
+  background: linear-gradient(135deg, #b45309 0%, #d97706 100%);
+}
+
+.pre-toast-error {
+  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
 }
 
 .pre-body {
@@ -33,14 +66,14 @@
   margin: 0;
   font-size: 36px;
   font-weight: 800;
-  color: #1f2937;
+  color: #ffffff;
   line-height: 1.2;
 }
 
 .pre-subtitle {
   margin: 12px 0 0 0;
   font-size: 16px;
-  color: #6b7280;
+  color: #ffffff;
   line-height: 1.6;
 }
 
@@ -72,6 +105,8 @@
   padding: 28px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid #f0f0f0;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .lbl-block {
@@ -87,10 +122,12 @@
 /* Textarea */
 .pretrained-box-modern {
   width: 100%;
+  max-width: 100%;
   height: 300px;
   padding: 16px;
   border: 2px solid #e8e8e8;
   border-radius: 10px;
+  box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
   font-size: 15px;
   line-height: 1.7;
@@ -309,6 +346,37 @@
   padding: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid #f0f0f0;
+}
+
+.score-card-compact-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.mini-metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.mini-metric-label {
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.mini-metric-value {
+  color: #1f2937;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
 }
 
 .score-label {

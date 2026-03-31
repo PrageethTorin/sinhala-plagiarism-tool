@@ -6,6 +6,9 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from fastapi import File, UploadFile
+from modules.OCR.ocr_engine import extract_text_from_image
+
 # --- PATH CONFIGURATION ---
 sys.path.append(os.path.dirname(__file__))
 
@@ -108,6 +111,32 @@ async def check_internet_route(data: InternetRequest):
         return result
     except Exception as e:
         logger.error(f"❌ Internet Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/api/ocr-extract")
+async def ocr_extract_route(image: UploadFile = File(...)):
+    """
+    Receives an image file and returns extracted Sinhala text.
+    """
+    try:
+        # Read the uploaded image bytes
+        image_bytes = await image.read()
+        
+        logger.info(f"📸 Received OCR Request: {image.filename}")
+        
+        # Process via the OCR engine
+        extracted_text = extract_text_from_image(image_bytes)
+        
+        if extracted_text is None:
+            raise HTTPException(status_code=500, detail="OCR processing failed")
+            
+        if not extracted_text:
+            raise HTTPException(status_code=400, detail="No readable Sinhala text found in image")
+
+        return {"extractedText": extracted_text}
+
+    except Exception as e:
+        logger.error(f"❌ OCR Route Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- 2. FRIEND'S WSA ROUTE ---

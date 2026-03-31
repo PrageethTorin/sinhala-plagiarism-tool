@@ -70,7 +70,7 @@ export default function Home({ sidebarOpen, setSidebarOpen }) {
               <p>Analyze and identify writing patterns</p>
             </a>
 
-            <a href="#/writing-style-2" className="feature-card similarity-card">
+            <a href="#/semantic-similarity" className="feature-card similarity-card">
               <div className="card-icon">🔍</div>
               <h3>Semantic Similarity</h3>
               <p>Find semantically similar content</p>

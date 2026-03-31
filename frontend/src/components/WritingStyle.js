@@ -81,6 +81,13 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
     await analyzeText(originalText);
   };
 
+  const needsAutoSpace = (currentToken, nextToken) => {
+    if (!nextToken) return false;
+    if (/\s$/.test(currentToken || '')) return false;
+    if (/^[,.;:!?…)}\]]/.test(nextToken || '')) return false;
+    return true;
+  };
+
   return (
     <div className="ws-wrap">
       <NavBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
@@ -109,17 +116,58 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
 
           {apiResult?.ratio_data && (
             <div className="ws-result-container fade-in">
-              <div className="ws-result-card">
-                <div className="ws-result-label">Style Change Ratio</div>
-                <div className="ws-score-pill">{apiResult.ratio_data.style_change_ratio}%</div>
-              </div>
+              {/* Show percentage only if NOT unique text */}
+              {apiResult.ratio_data.match_type !== "unique" && (
+                <div className="ws-result-card">
+                  <div className="ws-result-label">Style Change Ratio</div>
+                  <div className="ws-score-pill">{apiResult.ratio_data.style_change_ratio}%</div>
+                </div>
+              )}
 
               <div className="ws-source-card">
                 <div className="ws-source-alert">
                   <span className="ws-icon">🔍</span> Status Report:
                 </div>
                 <div className="ws-source-link-box">
-                  {apiResult.ratio_data.matched_url?.startsWith('http') ? (
+                  {/* Show appropriate status */}
+                  {apiResult.ratio_data.match_type === "unique" ? (
+                    <div>
+                      <span className="ws-internal-label">✓ Unique Sinhala Text - No Match Found</span>
+                      {apiResult.ratio_data.web_matched_url?.startsWith('http') && (
+                        <div style={{ marginTop: "8px", fontSize: "12px", color: "#7ec2c0" }}>
+                          <strong>Web Source Candidate:</strong>{' '}
+                          <a href={apiResult.ratio_data.web_matched_url} target="_blank" rel="noreferrer" className="ws-source-link">
+                            {apiResult.ratio_data.web_matched_url}
+                          </a>
+                          {' '}({apiResult.ratio_data.web_similarity_score ?? 0}%)
+                        </div>
+                      )}
+                    </div>
+                  ) : apiResult.ratio_data.match_type === "internal" ? (
+                    <div>
+                      <span className="ws-internal-label">
+                        ⚠️ Internal Database Match Found
+                      </span>
+                      <div style={{ marginTop: "8px", fontSize: "12px", color: "#666" }}>
+                        <strong>DB ID:</strong> {apiResult.ratio_data.matched_db_id}
+                      </div>
+                      <div style={{ marginTop: "8px", fontSize: "12px", color: "#666", maxHeight: "60px", overflowY: "auto" }}>
+                        <strong>Matched Text:</strong> {apiResult.ratio_data.matched_text}...
+                      </div>
+                      <div style={{ marginTop: "8px", fontSize: "12px", color: "#666" }}>
+                        <strong>Similarity:</strong> {apiResult.ratio_data.similarity_score}%
+                      </div>
+                      {apiResult.ratio_data.web_matched_url?.startsWith('http') && (
+                        <div style={{ marginTop: "8px", fontSize: "12px", color: "#7ec2c0" }}>
+                          <strong>Web Source Candidate:</strong>{' '}
+                          <a href={apiResult.ratio_data.web_matched_url} target="_blank" rel="noreferrer" className="ws-source-link">
+                            {apiResult.ratio_data.web_matched_url}
+                          </a>
+                          {' '}({apiResult.ratio_data.web_similarity_score ?? 0}%)
+                        </div>
+                      )}
+                    </div>
+                  ) : apiResult.ratio_data.matched_url?.startsWith('http') ? (
                     <a href={apiResult.ratio_data.matched_url} target="_blank" rel="noreferrer" className="ws-source-link">
                       {apiResult.ratio_data.matched_url}
                     </a>
@@ -142,37 +190,45 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
                   {apiResult.ratio_data.sentence_map?.map((s) => (
                     <span 
                       key={s.id} 
-                      className={s.is_outlier ? "ws-sentence-flagged" : "ws-sentence-normal"}
+                      className={(s.should_underline ?? s.is_outlier) ? "ws-sentence-flagged" : "ws-sentence-normal"}
                     >
                       
-{s.words?.map((word, idx) => (
-  <span key={`word-${s.id}-${idx}`} className="ws-interactive-word-wrapper">
-    <span className={word.is_style_shift ? "ws-word-formal" : ""}>
-      {word.text}{' '}
-    </span>
+{s.words?.map((word, idx) => {
+  const nextWordText = s.words?.[idx + 1]?.text || '';
+  const insertSpace = needsAutoSpace(word.text, nextWordText);
 
-    {/* TOOLTIP LOGIC */}
-    {word.is_style_shift && word.suggestions?.length > 0 && (
-      <div className="ws-synonym-popover">
-        <div className="popover-title">Suggestions:</div>
-        {word.suggestions.map((syn, sIdx) => (
-          <button 
-            key={`syn-${s.id}-${idx}-${sIdx}`} 
-            className="synonym-item-btn"
-            onClick={() => handleReplace(word.text.trim(), syn)}
-          >
-            {syn}
-          </button>
-        ))}
-      </div>
-    )}
-  </span>
-))}
+  return (
+    <React.Fragment key={`word-${s.id}-${idx}`}>
+      <span className="ws-interactive-word-wrapper">
+        <span className={word.is_style_shift ? "ws-word-formal" : ""}>
+          {word.text}
+        </span>
+
+        {/* TOOLTIP LOGIC */}
+        {word.is_style_shift && word.suggestions?.length > 0 && (
+          <div className="ws-synonym-popover">
+            <div className="popover-title">Suggestions:</div>
+            {word.suggestions.map((syn, sIdx) => (
+              <button
+                key={`syn-${s.id}-${idx}-${sIdx}`}
+                className="synonym-item-btn"
+                onClick={() => handleReplace(word.replace_target || word.text.trim(), syn)}
+              >
+                {syn}
+              </button>
+            ))}
+          </div>
+        )}
+      </span>
+      {insertSpace ? ' ' : ''}
+    </React.Fragment>
+  );
+})}
                     </span>
                   ))}
                 </div>
                 <div className="ws-legend">
-                   <div className="legend-item"><span className="box flagged-bg"></span> Sentence Outlier</div>
+                   <div className="legend-item"><span className="box flagged"></span> High-Length Sentence (Underlined)</div>
                    <div className="legend-item"><span className="wavy-line">~~~~</span> Formal Shift (Hover to Replace)</div>
                 </div>
               </div>

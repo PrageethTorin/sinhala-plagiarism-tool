@@ -30,6 +30,31 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 _SCRAPE_CACHE = {}
 _SCRAPE_CACHE_TTL_S = 600
 _BLOCKED_DOMAINS = ("youtube.com", "youtu.be", "tiktok.com", "facebook.com")
+_LOW_QUALITY_DOMAINS = (
+    "groups.google.com",
+    "huggingface.co/datasets",
+    "d1.islamhouse.com",
+)
+_HARD_BLOCK_DOMAINS = (
+    "pinterest.com",
+    "linkedin.com",
+    "instagram.com",
+    "twitter.com",
+    "x.com",
+)
+
+
+def _domain_priority(url: str) -> int:
+    u = (url or "").lower()
+    if "si.wikipedia.org" in u:
+        return 0
+    if ".gov.lk" in u:
+        return 1
+    if ".ac.lk" in u or ".edu" in u:
+        return 2
+    if any(d in u for d in _LOW_QUALITY_DOMAINS):
+        return 9
+    return 5
 
 
 def get_internet_resources(query_text, num_results=7) -> List[str]:
@@ -38,21 +63,41 @@ def get_internet_resources(query_text, num_results=7) -> List[str]:
     Falls back to static sources if DDGS is unavailable or fails.
     """
     links = []
+    low_quality_links = []
+    seen = set()
     print(f"[Discovery] Searching for: {query_text}")
 
     if DDGS_AVAILABLE and DDGS is not None:
         try:
             with DDGS() as ddgs:
-                search_results = ddgs.text(query_text, max_results=15, region="lk")
+                queries = [
+                    f"\"{query_text}\"",
+                    f"site:si.wikipedia.org \"{query_text}\"",
+                    query_text,
+                ]
+                for q in queries:
+                    search_results = ddgs.text(q, max_results=20, region="lk")
 
-            for result in search_results:
-                url = result.get("href") or result.get("link")
-                if (
-                    url
-                    and not url.lower().endswith(".pdf")
-                    and not any(domain in url.lower() for domain in _BLOCKED_DOMAINS)
-                ):
-                    links.append(url)
+                    for result in search_results:
+                        url = result.get("href") or result.get("link")
+                        if not url:
+                            continue
+                        ul = url.lower()
+                        if ul.endswith(".pdf"):
+                            continue
+                        if any(domain in ul for domain in _BLOCKED_DOMAINS):
+                            continue
+                        if any(domain in ul for domain in _HARD_BLOCK_DOMAINS):
+                            continue
+                        if url in seen:
+                            continue
+                        seen.add(url)
+
+                        if any(domain in ul for domain in _LOW_QUALITY_DOMAINS):
+                            low_quality_links.append(url)
+                        else:
+                            links.append(url)
+
                     if len(links) >= num_results:
                         break
         except Exception as e:
@@ -61,6 +106,9 @@ def get_internet_resources(query_text, num_results=7) -> List[str]:
         print("[Discovery] DDGS is not installed, using fallback source list")
 
     if links:
+        links.sort(key=_domain_priority)
+        if len(links) < num_results and low_quality_links:
+            links.extend(low_quality_links)
         return links[:num_results]
     return _fallback_search(query_text, num_results)
 
