@@ -6,28 +6,35 @@ import urllib3
 # Suppress SSL/InsecureRequest warnings common on .gov.lk websites
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-def get_internet_resources(query_text, num_results=7):
+def get_internet_resources(query_text, num_results=6):
     """
     DISCOVERY LAYER: Identifies the top qualified URLs for the search tokens.
-    Filters out non-text files to bridge the 'discovery vacuum'.
+    Prioritizes Wikipedia URLs (first 4) then adds other sources (remaining 2).
     """
-    links = []
+    wiki_links = []
+    other_links = []
     print(f"📡 [Discovery] Searching for: {query_text}")
     try:
         with DDGS() as ddgs:
-            # Fetch extra results to allow for filtering (max_results=15)
-            search_results = ddgs.text(query_text, max_results=15, region='lk')
+            # Fetch extra results to allow for filtering
+            search_results = ddgs.text(query_text, max_results=20, region='lk')
         
         for result in search_results:
             url = result['href']
-            # Only accept URLs that are not PDFs to ensure text extraction compatibility
+            # Only accept URLs that are not PDFs
             if not url.lower().endswith(".pdf"):
-                links.append(url)
-                print(f"🔗 [Qualified Source] {url}")
-                
-            # Stop once we have reached the requirement of 7 websites
-            if len(links) >= num_results: 
-                break
+                # Prioritize Wikipedia URLs
+                if "wikipedia.org" in url.lower():
+                    wiki_links.append(url)
+                    print(f"🔗 [Wikipedia Source] {url}")
+                else:
+                    other_links.append(url)
+                    print(f"🔗 [Other Source] {url}")
+        
+        # Combine: first 4 Wikipedia URLs, then up to 2 other URLs
+        links = wiki_links[:4] + other_links[:2]
+        links = links[:num_results]  # Ensure we don't exceed num_results
+        
     except Exception as e:
         print(f"⚠️ Discovery Phase Error: {str(e)}")
     return links

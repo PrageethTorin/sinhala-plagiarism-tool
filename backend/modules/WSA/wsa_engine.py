@@ -143,7 +143,7 @@ class WSAAnalyzer:
             
             # Only search internet if no high-match local database collusion is found
             if highest_local_score < 0.90:
-                links = await get_internet_resources(input_clean[:150], num_results=2)
+                links = await get_internet_resources(input_clean[:150], num_results=6)
                 if links:
                     web_candidate_url = links[0]
                 for url in links:
