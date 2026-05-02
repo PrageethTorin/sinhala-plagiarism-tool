@@ -1,0 +1,1 @@
+"""Plagiarism detector gateway package."""

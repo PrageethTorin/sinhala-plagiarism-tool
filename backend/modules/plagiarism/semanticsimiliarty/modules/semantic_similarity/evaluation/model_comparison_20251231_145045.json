@@ -1,0 +1,114 @@
+{
+  "timestamp": "2025-12-31T14:50:45.203772",
+  "test_samples": 260,
+  "models": [
+    {
+      "model_name": "custom_only",
+      "model_type": "custom",
+      "description": "Custom Algorithm: Jaccard(40%) + 2-gram(20%) + 3-gram(20%) + Word Order(20%)",
+      "results": {
+        "precision": 1.0,
+        "recall": 0.1163,
+        "f1_score": 0.2083,
+        "accuracy": 0.7077,
+        "roc_auc": 0.9344,
+        "mse": 0.0824,
+        "pearson_r": 0.6273,
+        "spearman_r": 0.5918,
+        "confusion_matrix": {
+          "TP": 10,
+          "TN": 174,
+          "FP": 0,
+          "FN": 76
+        },
+        "threshold": 0.5,
+        "sample_count": 260
+      },
+      "optimal_threshold": 0.8099999999999999,
+      "optimal_f1": 1.0,
+      "inference_time_seconds": 0.01,
+      "avg_time_per_sample_ms": 0.04
+    },
+    {
+      "model_name": "multilingual_baseline",
+      "model_type": "pretrained",
+      "description": "Pre-trained Multilingual MiniLM (no fine-tuning)",
+      "results": {
+        "precision": 0.344,
+        "recall": 1.0,
+        "f1_score": 0.5119,
+        "accuracy": 0.3692,
+        "roc_auc": 0.8792,
+        "mse": 0.3898,
+        "pearson_r": 0.5657,
+        "spearman_r": 0.5159,
+        "confusion_matrix": {
+          "TP": 86,
+          "TN": 10,
+          "FP": 164,
+          "FN": 0
+        },
+        "threshold": 0.5,
+        "sample_count": 260
+      },
+      "optimal_threshold": 0.6,
+      "optimal_f1": 0.5189873417721519,
+      "inference_time_seconds": 425.3,
+      "avg_time_per_sample_ms": 1635.76
+    },
+    {
+      "model_name": "finetuned_minilm",
+      "model_type": "finetuned",
+      "description": "Fine-tuned MiniLM on Sinhala data",
+      "results": {
+        "precision": 1.0,
+        "recall": 0.8837,
+        "f1_score": 0.9383,
+        "accuracy": 0.9615,
+        "roc_auc": 0.9997,
+        "mse": 0.0092,
+        "pearson_r": 0.9671,
+        "spearman_r": 0.6761,
+        "confusion_matrix": {
+          "TP": 76,
+          "TN": 174,
+          "FP": 0,
+          "FN": 10
+        },
+        "threshold": 0.5,
+        "sample_count": 260
+      },
+      "optimal_threshold": 0.31,
+      "optimal_f1": 0.9941520467836257,
+      "inference_time_seconds": 42.82,
+      "avg_time_per_sample_ms": 164.68
+    },
+    {
+      "model_name": "hybrid_approved",
+      "model_type": "hybrid",
+      "description": "Custom first, ML for difficult cases (0.4-0.7 range)",
+      "results": {
+        "precision": 1.0,
+        "recall": 0.1279,
+        "f1_score": 0.2268,
+        "accuracy": 0.7115,
+        "roc_auc": 0.9344,
+        "mse": 0.0819,
+        "pearson_r": 0.6293,
+        "spearman_r": 0.5919,
+        "confusion_matrix": {
+          "TP": 11,
+          "TN": 174,
+          "FP": 0,
+          "FN": 75
+        },
+        "threshold": 0.5,
+        "sample_count": 260
+      },
+      "optimal_threshold": 0.8099999999999999,
+      "optimal_f1": 1.0,
+      "inference_time_seconds": 0.2,
+      "avg_time_per_sample_ms": 0.77
+    }
+  ]
+}

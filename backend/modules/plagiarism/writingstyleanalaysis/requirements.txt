@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+sentence-transformers
+scikit-learn
+numpy
+joblib
+mysql-connector-python
+requests
+ddgs
+trafilatura
+playwright
+urllib3

@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+scikit-learn
+numpy
+joblib
+python-multipart
+
+# Only required if you still use /api/plagiarism/check (corpus-based similarity)
+sentence-transformers

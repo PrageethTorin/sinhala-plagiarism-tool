@@ -1,0 +1,169 @@
+/* Highlight Legend */
+.highlight-legend {
+  display: flex;
+  gap: 20px;
+  padding: 12px 15px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #a0aec0;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.legend-color.high {
+  background-color: #ff6b6b;
+}
+
+.legend-color.medium {
+  background-color: #ffa94d;
+}
+
+.legend-color.low {
+  background-color: #51cf66;
+}
+
+.legend-label {
+  font-size: 12px;
+}
+
+/* Highlighted Text Styles */
+.highlighted-text-container {
+  position: relative;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.highlighted-word {
+  position: relative;
+  cursor: pointer;
+  padding: 2px 3px;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+.highlighted-word:hover {
+  opacity: 0.9;
+}
+
+/* High Similarity (Red) */
+.highlighted-word.highlight-high {
+  background-color: rgba(255, 107, 107, 0.4);
+  color: #ffcccc;
+  border-bottom: 2px solid #ff6b6b;
+}
+
+.highlighted-word.highlight-high:hover {
+  background-color: rgba(255, 107, 107, 0.6);
+}
+
+/* Medium Similarity (Orange) */
+.highlighted-word.highlight-medium {
+  background-color: rgba(255, 169, 77, 0.4);
+  color: #ffe5cc;
+  border-bottom: 2px solid #ffa94d;
+}
+
+.highlighted-word.highlight-medium:hover {
+  background-color: rgba(255, 169, 77, 0.6);
+}
+
+/* Low Similarity (Green) */
+.highlighted-word.highlight-low {
+  background-color: rgba(81, 207, 102, 0.4);
+  color: #ccf0d9;
+  border-bottom: 2px solid #51cf66;
+}
+
+.highlighted-word.highlight-low:hover {
+  background-color: rgba(81, 207, 102, 0.6);
+}
+
+/* Tooltip Styles */
+.highlight-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1a202c;
+  color: #e2e8f0;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 8px;
+  pointer-events: none;
+}
+
+.highlight-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1a202c;
+}
+
+.tooltip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tooltip-label {
+  font-size: 11px;
+  color: #a0aec0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.tooltip-word {
+  color: #ffd43b;
+  font-weight: 600;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tooltip-score {
+  color: #51cf66;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .highlight-legend {
+    gap: 12px;
+  }
+
+  .legend-item {
+    font-size: 11px;
+  }
+
+  .highlight-tooltip {
+    font-size: 11px;
+  }
+
+  .highlighted-word {
+    padding: 1px 2px;
+  }
+}

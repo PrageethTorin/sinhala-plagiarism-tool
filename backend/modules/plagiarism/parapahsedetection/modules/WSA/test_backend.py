@@ -1,0 +1,36 @@
+import requests
+
+# Port 8000 must match your main.py configuration
+URL = "http://127.0.0.1:8000/api/check-wsa"
+
+def run_research_test():
+    # FIXED: Triple quotes handle multi-line Sinhala text without syntax errors
+    test_text = (
+"මානව වංශ ජනනය (ග්‍රීක් එත්නොස් ἔθνος, මානවයන් කණ්ඩායම හෝ ජාතිය, සහ ජෙනසිස් γένεσις, ඇරඹුම, උපත, බහු. එත්නොජෙනසිස් වෙතින්) වනාහි, කිසියම් පුළුල් සමාජ පසුතලයක් තුලින් පැනනැගුනු යම් මානවයන් කණ්ඩායමක් තමන් ජනවාර්ගික අයුරින් වෙනස් බවට තේරුම් ගෙන හෝ තේරුම් ගනිමින් හෝ සිටින ක්‍රියාවලියයි. ඊ. පී. තොම්ප්සන් ගේ වදන් අනුව, මෙම ස්වයං-පරිකල්පනය තුලින් ජනවාර්ගීක කණ්ඩායම් ඔවුන් විසින්ම ජනනය කරගැනුමෙන් කරලියට එති. මෙම සංස්කෘතික ජනනය පිළිගැන්මට ලක්වීම හේතුවෙන්, වරෙක අවිචාරවත් ලෙසින් ඓතිහාසික සිද්ධාන්ත ලෙසින් පිළිගැනුනු සාම්ප්‍රදායික සාධ්‍යතාමය ජාතීන්-ජනනයේ වෘත්තාන්තයන් ජනප්‍රවාද පරිගතයට අනුයුක්ත කෙරුමට සමහරක් ඉතිහාසඥයින් පෙළඹී ඇත"
+    )
+    try:
+        response = requests.post(URL, json={"text": test_text.strip()}, timeout=60)
+        
+        if response.status_code == 200:
+            data = response.json()
+            print("="*80)
+            print("✅ DYNAMIC RESEARCH ANALYSIS (STYLE & INTERNET DISCOVERY)")
+            print(f"📊 Style Change Ratio: {data.get('style_change_ratio', 0)}%")
+            print(f"🔗 BEST SAME IDEA URL: {data.get('matched_url', 'No source found')}")
+            print("-" * 80)
+            print(f"{'ID':<4} | {'Len':<5} | {'TTR %':<10} | {'Status'}")
+            print("-" * 60)
+            
+            for s in data.get('sentence_map', []):
+                # Status logic based on outlier calculation in wsa_engine
+                status = "🚩 STYLE SHIFT" if s['is_outlier'] else "✓ Baseline"
+                print(f"S{s['id']:<3} | {s['length']:<5} | {s['lexical_ttr']:<10} | {status}")
+            print("-" * 80)
+        else:
+            print(f"❌ Server Error: {response.status_code} - Check main.py logs")
+            
+    except Exception as e:
+        print(f"❌ Connection Error: Ensure main.py is running on port 8000")
+
+if __name__ == "__main__":
+    run_research_test()
