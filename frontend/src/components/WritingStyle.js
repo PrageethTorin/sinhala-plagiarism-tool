@@ -190,7 +190,7 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
                   {apiResult.ratio_data.sentence_map?.map((s) => (
                     <span 
                       key={s.id} 
-                      className={(s.should_underline ?? s.is_outlier) ? "ws-sentence-flagged" : "ws-sentence-normal"}
+                      className={s.is_outlier ? "ws-sentence-flagged" : "ws-sentence-normal"}
                     >
                       
 {s.words?.map((word, idx) => {
@@ -200,12 +200,12 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
   return (
     <React.Fragment key={`word-${s.id}-${idx}`}>
       <span className="ws-interactive-word-wrapper">
-        <span className={word.is_style_shift ? "ws-word-formal" : ""}>
+        <span className={word.is_style_shift && s.is_outlier ? "ws-word-formal" : ""}>
           {word.text}
         </span>
 
         {/* TOOLTIP LOGIC */}
-        {word.is_style_shift && word.suggestions?.length > 0 && (
+        {word.is_style_shift && s.is_outlier && word.suggestions?.length > 0 && (
           <div className="ws-synonym-popover">
             <div className="popover-title">Suggestions:</div>
             {word.suggestions.map((syn, sIdx) => (
@@ -229,7 +229,7 @@ export default function WritingStyle({ sidebarOpen, setSidebarOpen }) {
                 </div>
                 <div className="ws-legend">
                    <div className="legend-item"><span className="box flagged"></span> High-Length Sentence (Underlined)</div>
-                   <div className="legend-item"><span className="wavy-line">~~~~</span> Formal Shift (Hover to Replace)</div>
+                   <div className="legend-item"><span className="wavy-line">~~~~</span> Formal Shift in Underlined Sentences (Hover to Replace)</div>
                 </div>
               </div>
             </div>
