@@ -13,6 +13,7 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
   const [result, setResult] = useState(null);
   const [toast, setToast] = useState(null);
   const toastTimerRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const showToast = (message, type = 'info') => {
     if (toastTimerRef.current) {
@@ -295,7 +296,22 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
       return tokens.map((text, idx) => {
         const matchType = indexMap.get(idx) || 'none';
         if (matchType === 'exact') return { text, score: 90 };
-        if (matchType === 'synonym') return { text, score: 70 };
+        if (matchType === 'synonym') return { text, score: 50 };
+
+        // 'none' from backend — try n-gram to catch morphological variants DB missed
+        if (sourceTokens.length) {
+          const norm = normalizeToken(text);
+          if (norm) {
+            let best = 0;
+            for (let i = 0; i < sourceTokens.length; i += 1) {
+              const sim = tokenSimilarity(norm, sourceTokens[i]);
+              if (sim > best) best = sim;
+              if (best >= 0.9) break;
+            }
+            if (best >= 0.8) return { text, score: 50 };
+            if (best >= 0.65) return { text, score: 35 };
+          }
+        }
         return { text, score: 0 };
       });
     }
@@ -321,8 +337,8 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
         if (best >= 0.9) break;
       }
 
-      if (best >= 0.8) return { text, score: 70 };
-      if (best >= 0.65) return { text, score: 45 };
+      if (best >= 0.8) return { text, score: 50 };
+      if (best >= 0.65) return { text, score: 35 };
       return { text, score: 0 };
     });
   };
@@ -362,6 +378,8 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
         detailedMatches.push({
           sentenceIndex: m?.sentenceIndex ?? m?.idx,
           studentSentence: m?.student_sentence ?? null,
+          sourceSentence: m?.source_sentence ?? null,
+          alignedWords: Array.isArray(m?.aligned_words) ? m.aligned_words : null,
           score: m?.paraphrase_score ?? m?.score ?? 0,
           url: null,
         });
@@ -440,13 +458,13 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
     }));
   };
 
-  const highlightStyle = (score) => {
+  const highlightStyle = (score, strong = false) => {
     const s = clampPct(score);
 
     if (s >= 70) {
       return {
-        background: 'rgba(220, 38, 38, 0.28)',
-        borderLeft: '4px solid #dc2626',
+        background: strong ? 'rgba(220, 38, 38, 0.6)' : 'rgba(220, 38, 38, 0.28)',
+        borderLeft: strong ? '4px solid #b91c1c' : '4px solid #dc2626',
         borderRadius: 8,
         padding: '4px 8px',
       };
@@ -476,18 +494,18 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
     };
   };
 
-  const highlightWordStyle = (score) => {
+  const highlightWordStyle = (score, strong = false) => {
     const s = clampPct(score);
     if (s >= 70) {
       return {
-        background: 'rgba(220, 38, 38, 0.22)',
+        background: strong ? 'rgba(220, 38, 38, 0.6)' : 'rgba(220, 38, 38, 0.42)',
         borderRadius: 6,
         padding: '2px 4px',
       };
     }
     if (s >= 40) {
       return {
-        background: 'rgba(245, 158, 11, 0.18)',
+        background: 'rgba(245, 158, 11, 0.45)',
         borderRadius: 6,
         padding: '2px 4px',
       };
@@ -628,6 +646,26 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
     }
   };
 
+  const handleClear = () => {
+    if (extractingFile) {
+      showToast('Please wait until file extraction finishes.', 'warning');
+      return;
+    }
+    if (loading) {
+      showToast('Please wait until analysis finishes.', 'warning');
+      return;
+    }
+
+    setText('');
+    setFile(null);
+    setFileName('No file chosen');
+    setResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    showToast('Cleared text and file selection.', 'info');
+  };
+
   const internetUrls = useMemo(() => getInternetUrls(result), [result]);
   const displaySources = useMemo(() => getDisplaySources(result), [result]);
   const highlightedSentences = useMemo(() => {
@@ -666,6 +704,9 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
     }
     return { icon: '✓', title: 'No Significant Plagiarism' };
   })();
+
+  const isClean = !displayHasDirectWebCopy &&
+    !['PLAGIARIZED', 'SUSPICIOUS'].includes(displayDecision);
 
   const isDbBaseline =
     Boolean(result?.db_mode) &&
@@ -714,6 +755,7 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
                       type="file"
                       id="file-input-pretrained"
                       className="file-input"
+                      ref={fileInputRef}
                       onChange={handleFileChange}
                       accept=".txt,.pdf,.doc,.docx"
                     />
@@ -732,19 +774,45 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
                     <label htmlFor="searchWebPretrained">Search web for similar content</label>
                   </div>
 
-                  <button
-                    className={`pre-check-modern ${loading ? 'loading' : ''}`}
-                    onClick={handleCheck}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <span className="spinner"></span> Analyzing...
-                      </>
-                    ) : (
-                      'Check Plagiarism'
-                    )}
-                  </button>
+                  <div className="pre-action-row">
+                    <button
+                      className={`pre-check-modern ${loading ? 'loading' : ''}`}
+                      onClick={handleCheck}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <span className="spinner"></span> Analyzing...
+                        </>
+                      ) : (
+                        'Check Plagiarism'
+                      )}
+                    </button>
+                    <button
+                      className="pre-clear-btn"
+                      type="button"
+                      onClick={handleClear}
+                      aria-label="Clear text and uploaded file"
+                    >
+                      <svg
+                        className="pre-clear-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4h8v2" />
+                        <path d="M8 10v8" />
+                        <path d="M12 10v8" />
+                        <path d="M16 10v8" />
+                      </svg>
+                      Clear
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -764,7 +832,12 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
                       <div className="verdict-header">
                         <span className="verdict-icon">{verdictMeta.icon}</span>
                         <div className="verdict-text">
-                          <h3 className="verdict-title">{verdictMeta.title}</h3>
+                          <h3
+                            className="verdict-title"
+                            style={displayHasDirectWebCopy ? { color: '#dc2626' } : undefined}
+                          >
+                            {verdictMeta.title}
+                          </h3>
                           <p className="verdict-subtitle">
                             Overall Score: <strong>{fmtPct(displayOverallScore)}%</strong>
                           </p>
@@ -809,34 +882,56 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
                         </h4>
 
                         {highlightedSentences.length > 0 ? (
-                          <div style={{ lineHeight: 2 }}>
-                            {highlightedSentences.map((item, idx) => (
-                              <span key={idx} style={{ marginRight: 6 }}>
-                                {item.sourceSentence ? (
-                                  <span title={`Match: ${fmtPct(item.score)}%`}>
-                                    {buildTokenHighlights(
-                                      item.text,
-                                      item.sourceSentence,
-                                      item.alignedWords
-                                    ).map(
-                                      (tok, tIdx) => (
-                                        <span key={tIdx} style={highlightWordStyle(tok.score)}>
-                                          {tok.text}
-                                        </span>
-                                      )
-                                    )}
-                                  </span>
-                                ) : (
-                                  <span
-                                    style={highlightStyle(item.score)}
-                                    title={`Match: ${fmtPct(item.score)}%`}
-                                  >
-                                    {item.text}
-                                  </span>
-                                )}
-                              </span>
-                            ))}
-                          </div>
+                          <>
+                            {!isClean && (
+                              <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                                  <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 4, background: 'rgba(220, 38, 38, 0.6)', border: '2px solid #b91c1c' }}></span>
+                                  Direct copy
+                                </span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                                  <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 4, background: 'rgba(220, 38, 38, 0.42)', border: '2px solid #dc2626' }}></span>
+                                  Plagiarized
+                                </span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                                  <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 4, background: 'rgba(245, 158, 11, 0.45)', border: '2px solid #f59e0b' }}></span>
+                                  Suspicious
+                                </span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                                  <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 4, background: 'rgba(234, 179, 8, 0.16)', border: '2px solid #eab308' }}></span>
+                                  Low similarity
+                                </span>
+                              </div>
+                            )}
+                            <div style={{ lineHeight: 2 }}>
+                              {highlightedSentences.map((item, idx) => (
+                                <span key={idx} style={{ marginRight: 6 }}>
+                                  {!isClean && item.sourceSentence ? (
+                                    <span title={`Match: ${fmtPct(item.score)}%`}>
+                                      {buildTokenHighlights(
+                                        item.text,
+                                        item.sourceSentence,
+                                        item.alignedWords
+                                      ).map(
+                                        (tok, tIdx) => (
+                                          <span key={tIdx} style={highlightWordStyle(tok.score, displayHasDirectWebCopy)}>
+                                            {tok.text}
+                                          </span>
+                                        )
+                                      )}
+                                    </span>
+                                  ) : (
+                                    <span
+                                      style={highlightStyle(isClean ? 0 : item.score, displayHasDirectWebCopy)}
+                                      title={isClean ? undefined : `Match: ${fmtPct(item.score)}%`}
+                                    >
+                                      {item.text}
+                                    </span>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                          </>
                         ) : (
                           <p style={{ margin: 0 }}>No highlighted content available.</p>
                         )}

@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Dict, List, Optional
 
 from ..database.db_config import get_db_connection
@@ -17,6 +18,61 @@ SUBMISSIONS_TABLE = "student_submissions"
 
 def _tokenize(text: str) -> List[str]:
     return [w.strip().lower() for w in (text or "").split() if w.strip()]
+
+
+def _split_sentences(text: str) -> List[str]:
+    if not text:
+        return []
+    return [s.strip() for s in re.split(r'(?<=[.!?।])', text) if s.strip()]
+
+
+def _normalize_token_db(token: str) -> str:
+    token = re.sub(r'^[^\w඀-෿]+|[^\w඀-෿]+$', '', token or '')
+    return token.strip().lower()
+
+
+def _align_words_db(student_sentence: str, source_sentence: str) -> List[Dict]:
+    tokens = (student_sentence or '').split()
+    source_tokens = [_normalize_token_db(t) for t in (source_sentence or '').split()]
+    source_set = {t for t in source_tokens if t}
+    aligned = []
+    for idx, token in enumerate(tokens):
+        norm = _normalize_token_db(token)
+        if not norm:
+            aligned.append({"token_index": idx, "match_type": "none"})
+            continue
+        aligned.append({"token_index": idx, "match_type": "exact" if norm in source_set else "none"})
+    return aligned
+
+
+def _build_detailed_matches(student_text: str, source_text: str, overall_score: float) -> List[Dict]:
+    student_sents = _split_sentences(student_text)
+    source_sents = _split_sentences(source_text)
+    if not student_sents or not source_sents:
+        return []
+    detailed = []
+    for i, s_sent in enumerate(student_sents):
+        s_tokens = set(_tokenize(s_sent))
+        best_score = 0.0
+        best_source = None
+        for src_sent in source_sents:
+            src_tokens = set(_tokenize(src_sent))
+            if not s_tokens or not src_tokens:
+                continue
+            score = len(s_tokens & src_tokens) / len(s_tokens | src_tokens) * 100
+            if score > best_score:
+                best_score = score
+                best_source = src_sent
+        if best_score >= 25 and best_source:
+            detailed.append({
+                "sentenceIndex": i,
+                "student_sentence": s_sent,
+                "source_sentence": best_source,
+                "paraphrase_score": round(max(best_score, overall_score * 0.7), 2),
+                "score": round(max(best_score, overall_score * 0.7), 2),
+                "aligned_words": _align_words_db(s_sent, best_source),
+            })
+    return detailed
 
 
 def _overlap_ratio(a: str, b: str) -> float:
@@ -162,7 +218,10 @@ async def _compare_single(student_text: str, source_text: str) -> Dict:
         "wsa_similarity": round(wsa_similarity_feature, 2),
         "evidence_flag": evidence_flag,
         "decision": decision,
-        "paraphrase_result": paraphrase_result,
+        "paraphrase_result": {
+            **(paraphrase_result or {}),
+            "detailed_matches": _build_detailed_matches(student_text, source_text, overall),
+        },
         "semantic_result": semantic_result,
         "wsa_result": {
             "db_mode": True,

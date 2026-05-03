@@ -505,7 +505,8 @@ class EnhancedWebPlagiarismChecker:
             texts,
             convert_to_numpy=True,
             normalize_embeddings=True,
-            show_progress_bar=False
+            show_progress_bar=False,
+            batch_size=4,
         )
 
     def _classify_match(self, embedding_score: float, custom_score: float) -> Tuple[float, str, str]:
@@ -584,11 +585,12 @@ class EnhancedWebPlagiarismChecker:
             if q3 not in queries:
                 queries.append(q3)
 
-        # Query 4: Site-targeted search for known Sinhala sources
+        # Query 4: Plain search of the first sentence — let DDG return any matching site,
+        # not just Wikipedia. Wikipedia is already handled by direct API in Step 2b.
         if sentences:
-            site_query = f"site:si.wikipedia.org {self._remove_stopwords(sentences[0])[:120]}"
-            if site_query not in queries:
-                queries.append(site_query)
+            open_query = self._remove_stopwords(sentences[0])[:200]
+            if open_query and open_query not in queries:
+                queries.append(open_query)
 
         # Fallback
         if not queries:
@@ -681,14 +683,15 @@ class EnhancedWebPlagiarismChecker:
                     all_search_results.append(r)
             time.sleep(0.05)  # Minimal rate limit between queries
 
-        # ===== Step 2b: Always search Wikipedia directly (DDG is unreliable for Sinhala) =====
+        # ===== Step 2b: Also search Wikipedia directly (DDG is unreliable for Sinhala) =====
+        # Append (do not prepend) and cap to 2 so Wikipedia doesn't crowd out other sources.
         try:
-            wiki_results = search_wikipedia_directly(suspicious_text, max_results=5)
+            wiki_results = search_wikipedia_directly(suspicious_text, max_results=2)
             wiki_added = 0
             for r in wiki_results:
                 if r['url'] not in seen_urls:
                     seen_urls.add(r['url'])
-                    all_search_results.insert(0, r)  # Wikipedia first priority
+                    all_search_results.append(r)
                     wiki_added += 1
             if wiki_added > 0:
                 logger.info(f"[Step 2b] Added {wiki_added} Wikipedia articles via direct API")

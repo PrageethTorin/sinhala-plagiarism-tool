@@ -212,6 +212,51 @@
   gap: 8px;
 }
 
+.pre-action-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.pre-action-row .pre-check-modern {
+  margin-top: 0;
+  flex: 1;
+}
+
+.pre-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.pre-clear-btn:hover:not(:disabled) {
+  border-color: #c7cfdc;
+  color: #111827;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.pre-clear-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pre-clear-icon {
+  width: 16px;
+  height: 16px;
+}
+
 .pre-check-modern:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(79, 70, 229, 0.4);

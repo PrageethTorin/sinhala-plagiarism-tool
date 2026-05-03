@@ -125,7 +125,7 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
         },
         threshold: 0.3  // Lower threshold to show more matches
       }, {
-        timeout: 300000  // 5 minutes timeout for web scraping
+        timeout: 900000  // 15 minutes timeout for web scraping
       });
 
       setEnhancedResult(response.data);
@@ -358,6 +358,27 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
     if (score >= 0.8) return '#ff4757';
     if (score >= 0.5) return '#ffa502';
     return '#1fb6a0';
+  };
+
+  // Decide highlight color for a matched sentence:
+  // - Red  = near-exact copy from the source (high lexical overlap)
+  // - Yellow = semantic/paraphrased match (model says similar but wording changed)
+  const getMatchHighlight = (match) => {
+    const custom = match.custom_score || 0;
+    const embed = match.embedding_score || 0;
+    const isExact = custom >= 0.6 || match.case_type === 'easy_positive';
+    if (isExact) {
+      return {
+        bg: 'rgba(255, 71, 87, 0.35)',
+        border: '#ff4757',
+        kind: 'exact',
+      };
+    }
+    return {
+      bg: 'rgba(255, 193, 7, 0.30)',
+      border: '#ffc107',
+      kind: 'paraphrase',
+    };
   };
 
   // ==================== RENDER ====================
@@ -850,13 +871,13 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                                         <span
                                           key={i}
                                           ref={(el) => { highlightRefs.current[seg.sourceIndex] = el; }}
-                                          className={`report-highlight ${activeSourceIndex === seg.sourceIndex ? 'active' : ''}`}
+                                          className={`report-highlight match-${getMatchHighlight(seg.match).kind} ${activeSourceIndex === seg.sourceIndex ? 'active' : ''}`}
                                           style={{
-                                            backgroundColor: SOURCE_COLORS[seg.sourceIndex % SOURCE_COLORS.length].bg,
-                                            borderBottomColor: SOURCE_COLORS[seg.sourceIndex % SOURCE_COLORS.length].border,
+                                            backgroundColor: getMatchHighlight(seg.match).bg,
+                                            borderBottomColor: getMatchHighlight(seg.match).border,
                                           }}
                                           onClick={() => scrollToSource(seg.sourceIndex)}
-                                          title={`Source ${seg.sourceIndex + 1}: ${seg.match.source_title || seg.match.source_url || ''} — ${((seg.match.similarity_score || 0) * 100).toFixed(1)}%`}
+                                          title={`${getMatchHighlight(seg.match).kind === 'exact' ? 'Near-exact copy' : 'Paraphrased / semantic match'} — Source ${seg.sourceIndex + 1}: ${seg.match.source_title || seg.match.source_url || ''} — ${((seg.match.similarity_score || 0) * 100).toFixed(1)}%`}
                                         >
                                           <span
                                             className="source-marker"
@@ -866,8 +887,11 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                                           >
                                             {seg.sourceIndex + 1}
                                           </span>
-                                          {/* Render words with changed-word highlighting */}
-                                          {seg.changedWords && seg.changedWords.size > 0 ? (
+                                          {/* Inner per-word highlights: only useful when outer box is RED
+                                              (exact copy) — they show the few reworded words.
+                                              On YELLOW boxes (paraphrase) the entire sentence is reworded,
+                                              so per-word marks would just clutter the view. */}
+                                          {getMatchHighlight(seg.match).kind === 'exact' && seg.changedWords && seg.changedWords.size > 0 ? (
                                             seg.content.split(/(\s+)/).map((word, wi) => {
                                               if (/^\s+$/.test(word)) return <span key={wi}>{word}</span>;
                                               return seg.changedWords.has(word) ? (
@@ -875,12 +899,12 @@ export default function SemanticSimilarity({ sidebarOpen, setSidebarOpen }) {
                                                   key={wi}
                                                   className="changed-word"
                                                   style={{
-                                                    backgroundColor: 'rgba(255, 193, 7, 0.5)',
+                                                    backgroundColor: 'rgba(255, 193, 7, 0.6)',
                                                     borderBottom: '2px solid #ffc107',
                                                     borderRadius: '2px',
                                                     padding: '0 1px',
                                                   }}
-                                                  title="Semantically changed word"
+                                                  title="Reworded word inside an otherwise-exact match"
                                                 >
                                                   {word}
                                                 </span>
