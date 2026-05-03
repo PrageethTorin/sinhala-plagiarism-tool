@@ -9,6 +9,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from ...parapahsedetection.modules.ParaphraseDetection.lexical_analyzer import (
     calculate_lexical_similarity,
+    get_synonyms_from_db,
 )
 from ...parapahsedetection.modules.ParaphraseDetection.preprocessor import preprocess_text
 from ...parapahsedetection.modules.web_scraper import (
@@ -177,7 +178,43 @@ def _make_direct_match(sentence, score=100.0):
         "semantic_score": score,
         "lexical_score": score,
         "mode": "High-Lexical",
+        "aligned_words": [],
     }
+
+
+def _normalize_token(token: str) -> str:
+    return re.sub(r"^[^\w\u0D80-\u0DFF]+|[^\w\u0D80-\u0DFF]+$", "", token or "").strip().lower()
+
+
+def _tokenize_preserve_spaces(text: str):
+    if not text:
+        return []
+    return re.findall(r"\S+\s*", text, flags=re.UNICODE)
+
+
+def _align_words(student_sentence: str, source_sentence: str):
+    tokens = _tokenize_preserve_spaces(student_sentence)
+    source_tokens = [_normalize_token(t) for t in _tokenize_preserve_spaces(source_sentence)]
+    source_set = {t for t in source_tokens if t}
+
+    aligned = []
+    for idx, token in enumerate(tokens):
+        norm = _normalize_token(token)
+        if not norm:
+            aligned.append({"token_index": idx, "match_type": "none"})
+            continue
+
+        if norm in source_set:
+            aligned.append({"token_index": idx, "match_type": "exact"})
+            continue
+
+        synonyms = get_synonyms_from_db(norm)
+        if synonyms and any(syn in source_set for syn in synonyms):
+            aligned.append({"token_index": idx, "match_type": "synonym"})
+        else:
+            aligned.append({"token_index": idx, "match_type": "none"})
+
+    return aligned
 
 
 def _check_paraphrase(source_text, suspicious_text):
@@ -233,7 +270,10 @@ def process_single_url(url, input_sentences):
         if full_text_direct_score >= full_text_threshold:
             direct_score = max(90.0 if is_wiki else 85.0, full_text_direct_score)
             direct_match_by_index = {
-                i: _make_direct_match(s_sent, direct_score)
+                i: {
+                    **_make_direct_match(s_sent, direct_score),
+                    "aligned_words": _align_words(s_sent, s_sent),
+                }
                 for i, s_sent in enumerate(input_sentences)
             }
 
@@ -241,10 +281,13 @@ def process_single_url(url, input_sentences):
             for i, s_sent in enumerate(input_sentences):
                 direct_score = _copy_coverage_score(s_sent, normalized_page)
                 if direct_score >= DIRECT_SHINGLE_THRESHOLD:
-                    direct_match_by_index[i] = _make_direct_match(
-                        s_sent,
-                        max(90.0 if is_wiki else 85.0, direct_score),
-                    )
+                    direct_match_by_index[i] = {
+                        **_make_direct_match(
+                            s_sent,
+                            max(90.0 if is_wiki else 85.0, direct_score),
+                        ),
+                        "aligned_words": _align_words(s_sent, s_sent),
+                    }
 
         direct_density = len(direct_match_by_index) / len(input_sentences) if input_sentences else 0.0
         if direct_match_by_index and (
@@ -331,6 +374,7 @@ def process_single_url(url, input_sentences):
                         "semantic_score": analysis["semantic_score"],
                         "lexical_score": analysis["lexical_score"],
                         "mode": analysis["detection_mode"],
+                        "aligned_words": _align_words(s_sent, w_sent),
                     }
 
             best_scores.append(best_match_score)
@@ -424,9 +468,9 @@ def check_internet_plagiarism(student_text):
 
     url_reports.sort(
         key=lambda x: (
+            float(x.get("overall_paraphrase_percentage", 0.0)),
             float(x.get("exact_density", 0.0)),
             float(x.get("match_density", 0.0)),
-            float(x.get("overall_paraphrase_percentage", 0.0)),
             -_domain_rank(x.get("url", "")),
         ),
         reverse=True,
@@ -442,9 +486,9 @@ def check_internet_plagiarism(student_text):
         best_wiki = max(
             wiki_strong,
             key=lambda x: (
+                float(x.get("overall_paraphrase_percentage", 0.0)),
                 float(x.get("exact_density", 0.0)),
                 float(x.get("match_density", 0.0)),
-                float(x.get("overall_paraphrase_percentage", 0.0)),
             ),
         )
         url_reports = [best_wiki] + [r for r in url_reports if r is not best_wiki]

@@ -149,6 +149,9 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
   const getDisplaySources = (res) => {
     if (!res) return [];
 
+    const isWikipedia = (url) =>
+      String(url || '').toLowerCase().includes('wikipedia.org');
+
     const sources = [];
     const matchType =
       res?.features?.web_match_type || res?.web_match_type || res?.evidence?.web_match_type;
@@ -208,9 +211,14 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
     }
 
     return Array.from(uniq.values()).sort((a, b) => {
+      const aWiki = isWikipedia(a.url) ? 1 : 0;
+      const bWiki = isWikipedia(b.url) ? 1 : 0;
+      if (aWiki !== bWiki) return bWiki - aWiki;
+
       const ar = a.reliable ? 1 : 0;
       const br = b.reliable ? 1 : 0;
       if (ar !== br) return br - ar;
+
       const as = Number(a.score ?? -1);
       const bs = Number(b.score ?? -1);
       return bs - as;
@@ -233,6 +241,92 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
       .trim()
       .toLowerCase();
 
+  const normalizeToken = (token) =>
+    String(token || '')
+      .replace(/^[^\w\u0D80-\u0DFF]+|[^\w\u0D80-\u0DFF]+$/g, '')
+      .trim()
+      .toLowerCase();
+
+  const tokenizePreserveSpaces = (sentence) => {
+    if (!sentence) return [];
+    const matches = sentence.match(/\S+\s*/g);
+    return matches && matches.length ? matches : [sentence];
+  };
+
+  const buildNgrams = (word, n = 3) => {
+    if (!word || word.length < n) return [];
+    const grams = [];
+    for (let i = 0; i <= word.length - n; i += 1) {
+      grams.push(word.slice(i, i + n));
+    }
+    return grams;
+  };
+
+  const tokenSimilarity = (token, sourceToken) => {
+    if (!token || !sourceToken) return 0;
+    if (token === sourceToken) return 1;
+    const a = buildNgrams(token);
+    const b = buildNgrams(sourceToken);
+    if (!a.length || !b.length) return 0;
+    const setA = new Set(a);
+    const setB = new Set(b);
+    let inter = 0;
+    setA.forEach((g) => {
+      if (setB.has(g)) inter += 1;
+    });
+    const union = setA.size + setB.size - inter;
+    return union ? inter / union : 0;
+  };
+
+  const buildTokenHighlights = (sentence, sourceSentence, alignedWords) => {
+    const tokens = tokenizePreserveSpaces(sentence);
+    const sourceTokens = (sourceSentence || '')
+      .split(/\s+/)
+      .map(normalizeToken)
+      .filter(Boolean);
+
+    if (Array.isArray(alignedWords) && alignedWords.length > 0) {
+      const indexMap = new Map(
+        alignedWords.map((entry) => [
+          Number(entry?.token_index),
+          String(entry?.match_type || '').toLowerCase(),
+        ])
+      );
+      return tokens.map((text, idx) => {
+        const matchType = indexMap.get(idx) || 'none';
+        if (matchType === 'exact') return { text, score: 90 };
+        if (matchType === 'synonym') return { text, score: 70 };
+        return { text, score: 0 };
+      });
+    }
+
+    if (!sourceTokens.length) {
+      return tokens.map((text) => ({ text, score: 0 }));
+    }
+
+    const sourceSet = new Set(sourceTokens);
+    return tokens.map((text) => {
+      const norm = normalizeToken(text);
+      if (!norm) {
+        return { text, score: 0 };
+      }
+      if (sourceSet.has(norm)) {
+        return { text, score: 90 };
+      }
+
+      let best = 0;
+      for (let i = 0; i < sourceTokens.length; i += 1) {
+        const sim = tokenSimilarity(norm, sourceTokens[i]);
+        if (sim > best) best = sim;
+        if (best >= 0.9) break;
+      }
+
+      if (best >= 0.8) return { text, score: 70 };
+      if (best >= 0.65) return { text, score: 45 };
+      return { text, score: 0 };
+    });
+  };
+
   const buildSentenceHighlights = (res, sourceText) => {
     const sentences = splitIntoSentences(sourceText);
     if (!sentences.length) return [];
@@ -244,7 +338,9 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
           item.detailed_matches.forEach((m) => {
             detailedMatches.push({
               sentenceIndex: m?.sentenceIndex ?? m?.idx,
-              studentSentence: m?.student_sentence ?? null,
+              studentSentence: m?.student_sentence ?? m?.input_sentence ?? m?.matched_text ?? null,
+              sourceSentence: m?.source_sentence ?? m?.matched_text ?? null,
+              alignedWords: Array.isArray(m?.aligned_words) ? m.aligned_words : null,
               score: Math.max(
                 Number(m?.score ?? 0),
                 Number(m?.similarity ?? 0),
@@ -293,7 +389,12 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
     }
 
     if (detailedMatches.length > 0) {
-      const scores = sentences.map(() => ({ score: 0, url: null }));
+      const scores = sentences.map(() => ({
+        score: 0,
+        url: null,
+        sourceSentence: null,
+        alignedWords: null,
+      }));
       const normSentences = sentences.map((s) => normalizeSentence(s));
       detailedMatches.forEach((m) => {
         let idx = Number(m.sentenceIndex);
@@ -311,7 +412,12 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
         if (Number.isFinite(idx) && idx >= 0 && idx < scores.length) {
           const sc = Number(m.score || 0);
           if (sc > scores[idx].score) {
-            scores[idx] = { score: sc, url: m.url };
+            scores[idx] = {
+              score: sc,
+              url: m.url,
+              sourceSentence: m.sourceSentence,
+              alignedWords: m.alignedWords,
+            };
           }
         }
       });
@@ -320,6 +426,8 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
         text: sentence,
         score: scores[idx].score,
         sourceUrl: scores[idx].url,
+        sourceSentence: scores[idx].sourceSentence,
+        alignedWords: scores[idx].alignedWords,
       }));
     }
 
@@ -365,6 +473,28 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
     return {
       background: 'transparent',
       padding: '4px 8px',
+    };
+  };
+
+  const highlightWordStyle = (score) => {
+    const s = clampPct(score);
+    if (s >= 70) {
+      return {
+        background: 'rgba(220, 38, 38, 0.22)',
+        borderRadius: 6,
+        padding: '2px 4px',
+      };
+    }
+    if (s >= 40) {
+      return {
+        background: 'rgba(245, 158, 11, 0.18)',
+        borderRadius: 6,
+        padding: '2px 4px',
+      };
+    }
+    return {
+      background: 'transparent',
+      padding: '2px 4px',
     };
   };
 
@@ -682,12 +812,28 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
                           <div style={{ lineHeight: 2 }}>
                             {highlightedSentences.map((item, idx) => (
                               <span key={idx} style={{ marginRight: 6 }}>
-                                <span
-                                  style={highlightStyle(item.score)}
-                                  title={`Match: ${fmtPct(item.score)}%`}
-                                >
-                                  {item.text}
-                                </span>
+                                {item.sourceSentence ? (
+                                  <span title={`Match: ${fmtPct(item.score)}%`}>
+                                    {buildTokenHighlights(
+                                      item.text,
+                                      item.sourceSentence,
+                                      item.alignedWords
+                                    ).map(
+                                      (tok, tIdx) => (
+                                        <span key={tIdx} style={highlightWordStyle(tok.score)}>
+                                          {tok.text}
+                                        </span>
+                                      )
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={highlightStyle(item.score)}
+                                    title={`Match: ${fmtPct(item.score)}%`}
+                                  >
+                                    {item.text}
+                                  </span>
+                                )}
                               </span>
                             ))}
                           </div>
