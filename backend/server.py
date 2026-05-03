@@ -33,11 +33,6 @@ try:
 except ImportError:
     print("python-dotenv not installed")
 
-try:
-    from auth.routes import router as auth_router
-    AUTH_AVAILABLE = True
-except ImportError:
-    AUTH_AVAILABLE = False
 
 try:
     from database.db_config import initialize_database, db_health_check
@@ -155,10 +150,7 @@ async def check_wsa(data: WSARequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- 3. INCLUDED ROUTERS ---
-app.include_router(semantic_router, prefix="/api")
-if AUTH_AVAILABLE:
-    app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+
 
 # --- 4. LIFECYCLE & HEALTH ---
 

@@ -4,21 +4,21 @@ import sys
 import mysql.connector
 
 
-SUBMISSIONS_TABLE = "student_submissions"
+SUBMISSIONS_TABLE = "wsa_student_submissions"
 TEXT_COLUMN = "text"
 EMBEDDING_COLUMN = "embedding_blob"
 
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-database_dir = os.path.abspath(os.path.join(current_dir, "../../database"))
+backend_dir = os.path.abspath(os.path.join(current_dir, "../../"))
 
-if database_dir not in sys.path:
-    sys.path.append(database_dir)
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
 
 try:
-    from db_config import get_db_connection
+    from database.db_config import get_db_connection
 except ImportError:
-    print(f"Critical Error: Could not find db_config.py in {database_dir}")
+    print(f"Critical Error: Could not find db_config.py in {backend_dir}/database")
     sys.exit(1)
 
 
