@@ -12,7 +12,6 @@ from ..models.plagiarism.predictor import (
 )
 from ..services.external_backends import (
     ExternalServiceError,
-    check_internet,
     check_paraphrase,
     check_semantic,
     check_wsa,
@@ -20,6 +19,8 @@ from ..services.external_backends import (
     get_semantic_base_url,
     get_wsa_base_url,
 )
+from ..services.db_compare_service import analyze_against_db
+from ..services.web_scan import check_internet_plagiarism
 
 router = APIRouter()
 
@@ -139,6 +140,9 @@ async def _analyze(student_text: str, source_text: str, run_internet_scan: bool)
     wsa_task = None
     internet_task = None
 
+    if not source_text and not run_internet_scan:
+        return await analyze_against_db(student_text)
+
     # If source text is already provided, run all pairwise checks directly
     if source_text:
         para_task = asyncio.create_task(check_paraphrase(source_text, student_text))
@@ -147,7 +151,9 @@ async def _analyze(student_text: str, source_text: str, run_internet_scan: bool)
 
     # Otherwise first do internet scan to discover a source
     elif run_internet_scan:
-        internet_task = asyncio.create_task(check_internet(student_text))
+        internet_task = asyncio.create_task(
+            asyncio.to_thread(check_internet_plagiarism, student_text)
+        )
 
     # --- Internet scan first (if needed) ---
     best_source_text = ""

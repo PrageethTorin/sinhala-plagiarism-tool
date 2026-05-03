@@ -61,7 +61,7 @@ export default function Home({ sidebarOpen, setSidebarOpen }) {
             <a href="#/paraphrase" className="feature-card paraphrase-card">
               <div className="card-icon">📄</div>
               <h3>Paraphrase Detection</h3>
-              <p>Detect paraphrased content and rewritten text</p>
+              <p>Detect paraphrased content </p>
             </a>
 
             <a href="#/writing-style-1" className="feature-card writing-card">
@@ -78,8 +78,8 @@ export default function Home({ sidebarOpen, setSidebarOpen }) {
 
             <a href="#/pretrained" className="feature-card pretrained-card">
               <div className="card-icon">🤖</div>
-              <h3>Pretrained Models</h3>
-              <p>AI-powered plagiarism detection</p>
+              <h3>Plagiarism Detector</h3>
+              <p>plagiarism detection</p>
             </a>
           </div>
         </div>

@@ -19,7 +19,7 @@ except ImportError:
 
 import torch
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import HashingVectorizer, TfidfVectorizer
 from sentence_transformers import SentenceTransformer
 
 
@@ -332,12 +332,49 @@ class FileHandler:
 HUGGINGFACE_REPO_ID = "sandalidahanayake/sinhala-plagiarism-model"
 
 
+def _has_transformer_weights(model_path: str) -> bool:
+    weight_files = {"model.safetensors", "pytorch_model.bin", "tf_model.h5"}
+    for root, _, files in os.walk(model_path):
+        if any(name in weight_files for name in files):
+            return True
+    return False
+
+
 def _is_sentence_transformer_bundle(model_path: str) -> bool:
     """
     SentenceTransformer saved models must include modules.json in the root folder.
     Your screenshot shows this structure (0_Transformer/, 1_Pooling/, modules.json, etc.)
     """
-    return os.path.isdir(model_path) and os.path.exists(os.path.join(model_path, "modules.json"))
+    return (
+        os.path.isdir(model_path)
+        and os.path.exists(os.path.join(model_path, "modules.json"))
+        and _has_transformer_weights(model_path)
+    )
+
+
+class HashingEmbeddingModel:
+    """Local fallback with a SentenceTransformer-like encode method."""
+
+    def __init__(self):
+        self.vectorizer = HashingVectorizer(
+            analyzer="char_wb",
+            ngram_range=(3, 5),
+            n_features=2048,
+            norm="l2",
+            alternate_sign=False,
+        )
+
+    def encode(self, texts, convert_to_tensor=False, convert_to_numpy=False,
+               normalize_embeddings=False, show_progress_bar=False):
+        if isinstance(texts, str):
+            texts = [texts]
+        vectors = self.vectorizer.transform(texts).astype("float32").toarray()
+        if normalize_embeddings:
+            norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+            vectors = vectors / np.maximum(norms, 1e-12)
+        if convert_to_tensor:
+            return torch.tensor(vectors, dtype=torch.float32)
+        return vectors
 
 
 def download_model_from_huggingface(model_path: str, repo_id: str = HUGGINGFACE_REPO_ID) -> bool:
@@ -385,23 +422,38 @@ class FineTunedEmbeddingService:
     def __init__(self):
         base_dir = os.path.dirname(__file__)
         model_path = os.path.join(base_dir, "sinhala_fine_tuned_model")
-        self.model = SentenceTransformer(model_path)
 
         # Download if missing/not in correct format
         if not _is_sentence_transformer_bundle(model_path):
+            if os.path.exists(model_path):
+                print(
+                    "[WARNING] Fine-tuned Sinhala model folder is incomplete. "
+                    "Using local hashing fallback for semantic similarity."
+                )
+                self.model = HashingEmbeddingModel()
+                self.model_name = "hashing-fallback"
+                return
+
             success = download_model_from_huggingface(model_path)
             if not success:
-                raise FileNotFoundError(
-                    "Fine-tuned Sinhala model not found and could not be downloaded.\n"
-                    "Expected a SentenceTransformer bundle containing modules.json.\n"
-                    f"Repo: https://huggingface.co/{HUGGINGFACE_REPO_ID}\n"
-                    "Fix options:\n"
-                    "  1) Ensure huggingface_hub is installed: pip install huggingface_hub\n"
-                    "  2) Ensure the repo contains SentenceTransformer files (modules.json, 0_Transformer/, 1_Pooling/, etc.)\n"
-                    "  3) Or place the model folder at: semantic_similarity/sinhala_fine_tuned_model/\n"
+                print(
+                    "[WARNING] Fine-tuned Sinhala model weights are missing. "
+                    "Using local hashing fallback for semantic similarity."
                 )
+                self.model = HashingEmbeddingModel()
+                self.model_name = "hashing-fallback"
+                return
 
-        self.model = SentenceTransformer(model_path)
+        try:
+            self.model = SentenceTransformer(model_path)
+            self.model_name = model_path
+        except Exception as e:
+            print(
+                "[WARNING] Could not load fine-tuned Sinhala model "
+                f"({e}). Using local hashing fallback."
+            )
+            self.model = HashingEmbeddingModel()
+            self.model_name = "hashing-fallback"
 
     def similarity(self, text1: str, text2: str) -> float:
         embeddings = self.model.encode(

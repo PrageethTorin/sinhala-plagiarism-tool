@@ -6,11 +6,13 @@ from .external_backends import (
     ExternalServiceError,
     check_paraphrase,
     check_semantic,
-    check_wsa,
     get_paraphrase_base_url,
     get_semantic_base_url,
     get_wsa_base_url,
 )
+
+
+SUBMISSIONS_TABLE = "student_submissions"
 
 
 def _tokenize(text: str) -> List[str]:
@@ -32,6 +34,14 @@ def _safe_float(val, default=0.0) -> float:
         return float(default)
 
 
+def _decision_rank(decision: str) -> int:
+    return {
+        "PLAGIARIZED": 2,
+        "SUSPICIOUS": 1,
+        "NOT PLAGIARIZED": 0,
+    }.get(decision, -1)
+
+
 def _ensure_table() -> bool:
     conn = get_db_connection()
     if not conn:
@@ -39,8 +49,8 @@ def _ensure_table() -> bool:
     try:
         cur = conn.cursor()
         cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS student_assignments_new (
+            f"""
+            CREATE TABLE IF NOT EXISTS {SUBMISSIONS_TABLE} (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 text LONGTEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -62,7 +72,7 @@ def save_assignment(text: str) -> Optional[int]:
         return None
     try:
         cur = conn.cursor()
-        cur.execute("INSERT INTO student_assignments_new (text) VALUES (%s)", (text,))
+        cur.execute(f"INSERT INTO {SUBMISSIONS_TABLE} (text) VALUES (%s)", (text,))
         conn.commit()
         return int(cur.lastrowid)
     finally:
@@ -79,9 +89,9 @@ def get_previous_assignment(exclude_id: int, limit: int = 300) -> List[Dict]:
     try:
         cur = conn.cursor(dictionary=True)
         cur.execute(
-            """
+            f"""
             SELECT id, text, created_at
-            FROM student_assignments_new
+            FROM {SUBMISSIONS_TABLE}
             WHERE id <> %s
             ORDER BY created_at DESC
             LIMIT %s
@@ -99,16 +109,12 @@ def get_previous_assignment(exclude_id: int, limit: int = 300) -> List[Dict]:
 async def _compare_single(student_text: str, source_text: str) -> Dict:
     para_task = asyncio.create_task(check_paraphrase(source_text, student_text))
     sem_task = asyncio.create_task(check_semantic(source_text, student_text))
-    wsa_task = asyncio.create_task(check_wsa(source_text, student_text))
 
     paraphrase_result = None
     semantic_result = None
-    wsa_result = None
 
     semantic_feature = 0.0
     paraphrase_feature = 0.0
-    style_feature = 0.0
-    wsa_similarity_feature = 0.0
 
     try:
         paraphrase_result = await para_task
@@ -129,39 +135,40 @@ async def _compare_single(student_text: str, source_text: str) -> Dict:
     except ExternalServiceError:
         semantic_result = None
 
-    try:
-        wsa_result = await wsa_task
-        style_feature = _safe_float(
-            wsa_result.get("style_change_ratio")
-            or wsa_result.get("ratio_data", {}).get("style_change_ratio")
-            or 0.0
-        )
-        wsa_similarity_feature = _safe_float(
-            wsa_result.get("similarity_score")
-            or wsa_result.get("ratio_data", {}).get("similarity_score")
-            or 0.0
-        )
-    except ExternalServiceError:
-        wsa_result = None
+    lexical_overlap = _overlap_ratio(student_text, source_text) * 100.0
+    content_similarity = max(semantic_feature, paraphrase_feature, lexical_overlap)
+    wsa_similarity_feature = content_similarity
+    style_feature = 100.0 - content_similarity
 
-    overall = round((semantic_feature + paraphrase_feature + wsa_similarity_feature) / 3.0, 2)
-    all_three_match = (
-        semantic_feature >= 60.0
-        and paraphrase_feature >= 60.0
-        and wsa_similarity_feature >= 60.0
-    )
+    if lexical_overlap >= 90.0:
+        decision = "PLAGIARIZED"
+        overall = max(content_similarity, 90.0)
+        evidence_flag = "direct_db_text_match"
+    elif lexical_overlap >= 65.0 or semantic_feature >= 75.0 or paraphrase_feature >= 70.0:
+        decision = "SUSPICIOUS"
+        overall = max(content_similarity, 55.0)
+        evidence_flag = "possible_db_match"
+    else:
+        decision = "NOT PLAGIARIZED"
+        overall = min(content_similarity, 54.99)
+        evidence_flag = "weak_db_match"
 
     return {
-        "overall": overall,
+        "overall": round(overall, 2),
         "semantic": round(semantic_feature, 2),
         "paraphrase": round(paraphrase_feature, 2),
+        "lexical_overlap": round(lexical_overlap, 2),
         "style": round(style_feature, 2),
         "wsa_similarity": round(wsa_similarity_feature, 2),
-        "all_three_match": all_three_match,
-        "decision": "PLAGIARIZED" if all_three_match else "NOT PLAGIARIZED",
+        "evidence_flag": evidence_flag,
+        "decision": decision,
         "paraphrase_result": paraphrase_result,
         "semantic_result": semantic_result,
-        "wsa_result": wsa_result,
+        "wsa_result": {
+            "db_mode": True,
+            "similarity_score": round(wsa_similarity_feature, 2),
+            "style_change_ratio": round(style_feature, 2),
+        },
     }
 
 
@@ -264,7 +271,7 @@ async def analyze_against_db(student_text: str) -> Dict:
         previous,
         key=lambda r: _overlap_ratio(student_text, r.get("text", "")),
         reverse=True,
-    )[:5]
+    )[:3]
 
     best = None
     best_row = None
@@ -274,11 +281,14 @@ async def analyze_against_db(student_text: str) -> Dict:
             best = candidate
             best_row = row
             continue
-        # Prefer all-three matches first, then higher overall.
-        if candidate["all_three_match"] and not best["all_three_match"]:
+
+        # Prefer stronger DB decisions first, then higher score.
+        candidate_rank = _decision_rank(candidate["decision"])
+        best_rank = _decision_rank(best["decision"])
+        if candidate_rank > best_rank:
             best = candidate
             best_row = row
-        elif candidate["all_three_match"] == best["all_three_match"] and candidate["overall"] > best["overall"]:
+        elif candidate_rank == best_rank and candidate["overall"] > best["overall"]:
             best = candidate
             best_row = row
 
@@ -301,6 +311,7 @@ async def analyze_against_db(student_text: str) -> Dict:
         "features": {
             "semantic": best["semantic"],
             "paraphrase": best["paraphrase"],
+            "db_text_overlap": best["lexical_overlap"],
             "style": best["style"],
             "wsa_similarity": best["wsa_similarity"],
             "display_style_similarity": best["wsa_similarity"],
@@ -314,19 +325,19 @@ async def analyze_against_db(student_text: str) -> Dict:
         },
         "evidence": {
             "coverage": 0.0,
-            "best_lexical": _safe_float(
-                (best.get("paraphrase_result") or {}).get("lexical_score", 0.0)
-            ),
+            "best_lexical": best["lexical_overlap"],
+            "db_text_overlap": best["lexical_overlap"],
             "best_semantic": best["semantic"],
             "best_paraphrase": best["paraphrase"],
             "style_similarity": best["wsa_similarity"],
             "hybrid_score": best["overall"],
-            "flags": ["db_mode", "all_three_required"],
+            "flags": ["db_mode", best["evidence_flag"]],
         },
         "prediction": {
             "overall": best["overall"],
             "semantic": best["semantic"],
             "paraphrase": best["paraphrase"],
+            "db_text_overlap": best["lexical_overlap"],
             "style": best["style"],
             "style_similarity": best["wsa_similarity"],
             "hybrid_score": best["overall"],
@@ -340,4 +351,3 @@ async def analyze_against_db(student_text: str) -> Dict:
         "db_mode": True,
         "matched_submission_id": matched_id,
     }
-

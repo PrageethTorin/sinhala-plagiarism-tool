@@ -1,12 +1,7 @@
-import mysql.connector
+from backend.database.db_config import get_db_connection
 
 try:
-    conn = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="root", # Ensure this is correct!
-        database="sinhala_plagiarism_db"
-    )
+    conn = get_db_connection()
     print("Connection Successful!")
     cur = conn.cursor()
     cur.execute("SELECT DATABASE();")

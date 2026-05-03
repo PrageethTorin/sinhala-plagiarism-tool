@@ -263,7 +263,11 @@
 .feature-card h3 {
   font-size: 22px;
   font-weight: 700;
-  color: #222;
+  color: #ffffff;
+}
+
+.feature-card p {
+  color: #ffffff;
 }
 .card-link { display: block; text-decoration: none; }
 .card-link .card { transition: transform 180ms ease, box-shadow 180ms ease; }

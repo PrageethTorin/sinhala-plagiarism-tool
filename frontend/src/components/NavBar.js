@@ -21,12 +21,6 @@ export default function NavBar({ sidebarOpen, setSidebarOpen }) {
       <div className="nav-right">
         <a className="nav-profile" href="#/">Home</a>
         <a className="nav-profile" href="#/">My Profile</a>
-          <button
-          className="nav-login"
-          onClick={() => setMenuOpen(false)}
-        >
-          Login1
-        </button>
       </div>
     </header>
   );

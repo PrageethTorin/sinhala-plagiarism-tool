@@ -5,7 +5,7 @@ import re
 import numpy as np
 from typing import List, Set, Dict, Tuple
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import HashingVectorizer, TfidfVectorizer
 import jellyfish
 import pdfplumber
 import docx
@@ -415,12 +415,54 @@ class FileHandler:
 # HuggingFace Hub configuration
 HUGGINGFACE_REPO_ID = "sandalidahanayake/sinhala-plagiarism-model"
 
+
+def _has_transformer_weights(model_path: str) -> bool:
+    weight_files = {"model.safetensors", "pytorch_model.bin", "tf_model.h5"}
+    for root, _, files in os.walk(model_path):
+        if any(name in weight_files for name in files):
+            return True
+    return False
+
+
+def _is_sentence_transformer_ready(model_path: str) -> bool:
+    return (
+        os.path.isdir(model_path)
+        and os.path.exists(os.path.join(model_path, "modules.json"))
+        and _has_transformer_weights(model_path)
+    )
+
+
+class HashingEmbeddingModel:
+    """Local fallback with a SentenceTransformer-like encode method."""
+
+    def __init__(self):
+        self.vectorizer = HashingVectorizer(
+            analyzer="char_wb",
+            ngram_range=(3, 5),
+            n_features=2048,
+            norm="l2",
+            alternate_sign=False,
+        )
+
+    def encode(self, texts, convert_to_tensor=False, convert_to_numpy=False,
+               normalize_embeddings=False, show_progress_bar=False):
+        if isinstance(texts, str):
+            texts = [texts]
+        vectors = self.vectorizer.transform(texts).astype("float32").toarray()
+        if normalize_embeddings:
+            norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+            vectors = vectors / np.maximum(norms, 1e-12)
+        if convert_to_tensor:
+            return torch.tensor(vectors, dtype=torch.float32)
+        return vectors
+
+
 def download_model_from_huggingface(model_path: str, repo_id: str = HUGGINGFACE_REPO_ID) -> bool:
     
     #Download the fine-tuned model from HuggingFace Hub if not exists locally.
     #Returns True if model is ready, False if download failed.
     
-    if os.path.exists(model_path) and os.path.exists(os.path.join(model_path, "config.json")):
+    if _is_sentence_transformer_ready(model_path):
         return True  # Model already exists
 
     try:
@@ -438,9 +480,13 @@ def download_model_from_huggingface(model_path: str, repo_id: str = HUGGINGFACE_
             local_dir_use_symlinks=False
         )
 
-        logger.info("Model downloaded successfully!")
-        print("[INFO] Model downloaded successfully!")
-        return True
+        if _is_sentence_transformer_ready(model_path):
+            logger.info("Model downloaded successfully!")
+            print("[INFO] Model downloaded successfully!")
+            return True
+
+        print("[WARNING] Download finished, but model weights are still missing.")
+        return False
 
     except ImportError:
         print("[WARNING] huggingface_hub not installed. Run: pip install huggingface_hub")
@@ -461,19 +507,36 @@ class FineTunedEmbeddingService:
         base_dir = os.path.dirname(__file__)
         model_path = os.path.join(base_dir, "sinhala_fine_tuned_model")
 
-        # Try to download from HuggingFace if not exists
-        if not os.path.exists(model_path) or not os.path.exists(os.path.join(model_path, "config.json")):
+        if not _is_sentence_transformer_ready(model_path):
+            if os.path.exists(model_path):
+                print(
+                    "[WARNING] Fine-tuned Sinhala model folder is incomplete. "
+                    "Using local hashing fallback for semantic similarity."
+                )
+                self.model = HashingEmbeddingModel()
+                self.model_name = "hashing-fallback"
+                return
+
             success = download_model_from_huggingface(model_path)
             if not success:
-                raise FileNotFoundError(
-                    "Fine-tuned Sinhala model not found and could not be downloaded. "
-                    "Options:\n"
-                    "  1. Run fine_tune_sinhala.py to train locally\n"
-                    "  2. Ensure huggingface_hub is installed: pip install huggingface_hub\n"
-                    f"  3. Check if model exists at: https://huggingface.co/{HUGGINGFACE_REPO_ID}"
+                print(
+                    "[WARNING] Fine-tuned Sinhala model weights are missing. "
+                    "Using local hashing fallback for semantic similarity."
                 )
+                self.model = HashingEmbeddingModel()
+                self.model_name = "hashing-fallback"
+                return
 
-        self.model = SentenceTransformer(model_path)
+        try:
+            self.model = SentenceTransformer(model_path)
+            self.model_name = model_path
+        except Exception as e:
+            print(
+                "[WARNING] Could not load fine-tuned Sinhala model "
+                f"({e}). Using local hashing fallback."
+            )
+            self.model = HashingEmbeddingModel()
+            self.model_name = "hashing-fallback"
 
     def similarity(self, text1: str, text2: str) -> float:
         embeddings = self.model.encode(
