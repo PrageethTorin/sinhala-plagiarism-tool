@@ -30,25 +30,38 @@ def clean_text(text):
     text = re.sub(r'[^\u0D80-\u0DFF\s]', '', text) 
     return " ".join(text.split()).strip()
 
-async def get_internet_resources(query_text, num_results=7):
-    """DISCOVERY: Fetches high-confidence URLs from the web."""
-    links = []
+async def get_internet_resources(query_text, num_results=6):
+    """DISCOVERY: Fetches high-confidence URLs from the web.
+    Prioritizes Wikipedia URLs (first 4) then adds other sources (remaining 2).
+    """
+    wiki_links = []
+    other_links = []
     if not HAS_DDGS:
         print("⚠️ DuckDuckGo search disabled - trafilatura module not available")
-        return links
+        return []
     
     try:
         def fetch_search():
             with DDGS() as ddgs:
-                return [r['href'] for r in ddgs.text(query_text, max_results=12, region='lk')]
+                return [r['href'] for r in ddgs.text(query_text, max_results=20, region='lk')]
         
         loop = asyncio.get_event_loop()
         results = await loop.run_in_executor(None, fetch_search)
         
         for url in results:
             if not url.lower().endswith(".pdf"):
-                links.append(url)
-            if len(links) >= num_results: break
+                # Prioritize Wikipedia URLs
+                if "wikipedia.org" in url.lower():
+                    wiki_links.append(url)
+                    print(f"🔗 [Wikipedia] {url}")
+                else:
+                    other_links.append(url)
+                    print(f"🔗 [Other] {url}")
+        
+        # Combine: first 4 Wikipedia URLs, then up to 2 other URLs
+        links = wiki_links[:4] + other_links[:2]
+        links = links[:num_results]
+        
     except Exception as e:
         print(f"📡 Search Error: {e}")
     return links

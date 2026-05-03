@@ -59,15 +59,7 @@ class WSAAnalyzer:
 
             for db_id, db_text, prev_vec_blob in previous_submissions:
                 try:
-                    if prev_vec_blob:
-                        prev_vec = pickle.loads(prev_vec_blob)
-                    else:
-                        prev_clean = clean_text(db_text or "")
-                        if not prev_clean:
-                            continue
-                        prev_vec = self.vectorizer.transform([prev_clean])
-                        self.db.update_submission_embedding(db_id, pickle.dumps(prev_vec))
-
+                    prev_vec = pickle.loads(prev_vec_blob)
                     prev_vec_1d = prev_vec.toarray().flatten() if hasattr(prev_vec, 'toarray') else prev_vec.flatten()
                     
                     # Dimension compatibility check to prevent server crash
@@ -75,11 +67,11 @@ class WSAAnalyzer:
                         continue
                     
                     # Reshape for 2D comparison logic
-                    sim = float(cosine_similarity(input_vec, prev_vec)[0][0])
+                    sim = float(cosine_similarity(input_vec.reshape(1,-1), prev_vec.reshape(1,-1))[0][0])
                     if sim > highest_local_score:
                         highest_local_score = sim
                         matched_db_id = db_id
-                        matched_db_text = (db_text or "")[:200]  # Store first 200 chars for display
+                        matched_db_text = db_text[:200]  # Store first 200 chars for display
                 except Exception:
                     continue
 
@@ -151,7 +143,7 @@ class WSAAnalyzer:
             
             # Only search internet if no high-match local database collusion is found
             if highest_local_score < 0.90:
-                links = await get_internet_resources(input_clean[:150], num_results=2)
+                links = await get_internet_resources(input_clean[:150], num_results=6)
                 if links:
                     web_candidate_url = links[0]
                 for url in links:
