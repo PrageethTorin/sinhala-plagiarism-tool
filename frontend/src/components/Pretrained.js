@@ -212,17 +212,17 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
     }
 
     return Array.from(uniq.values()).sort((a, b) => {
-      const aWiki = isWikipedia(a.url) ? 1 : 0;
-      const bWiki = isWikipedia(b.url) ? 1 : 0;
-      if (aWiki !== bWiki) return bWiki - aWiki;
+      const as = Number(a.score ?? -1);
+      const bs = Number(b.score ?? -1);
+      if (as !== bs) return bs - as;
 
       const ar = a.reliable ? 1 : 0;
       const br = b.reliable ? 1 : 0;
       if (ar !== br) return br - ar;
 
-      const as = Number(a.score ?? -1);
-      const bs = Number(b.score ?? -1);
-      return bs - as;
+      const aWiki = isWikipedia(a.url) ? 1 : 0;
+      const bWiki = isWikipedia(b.url) ? 1 : 0;
+      return bWiki - aWiki;
     });
   };
 
@@ -238,12 +238,14 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
   const normalizeSentence = (s) =>
     String(s || '')
       .replace(/\s+/g, ' ')
-      .replace(/[.?!à¥¤]+$/g, '')
+      .replace(/[.?!।॥]+$/g, '')
       .trim()
       .toLowerCase();
 
   const normalizeToken = (token) =>
     String(token || '')
+      .replace(/[\u200B-\u200F\uFEFF\u00AD]/g, '')
+      .normalize('NFC')
       .replace(/^[^\w\u0D80-\u0DFF]+|[^\w\u0D80-\u0DFF]+$/g, '')
       .trim()
       .toLowerCase();
@@ -285,6 +287,7 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
       .split(/\s+/)
       .map(normalizeToken)
       .filter(Boolean);
+    const sourceSet = new Set(sourceTokens);
 
     if (Array.isArray(alignedWords) && alignedWords.length > 0) {
       const indexMap = new Map(
@@ -298,16 +301,20 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
         if (matchType === 'exact') return { text, score: 90 };
         if (matchType === 'synonym') return { text, score: 50 };
 
-        // 'none' from backend — try n-gram to catch morphological variants DB missed
+        // 'none' from backend — first try direct source-set lookup (catches any
+        // remaining encoding differences the backend normalization missed), then
+        // fall back to n-gram for genuine morphological variants.
         if (sourceTokens.length) {
           const norm = normalizeToken(text);
           if (norm) {
+            if (sourceSet.has(norm)) return { text, score: 90 };
             let best = 0;
             for (let i = 0; i < sourceTokens.length; i += 1) {
               const sim = tokenSimilarity(norm, sourceTokens[i]);
               if (sim > best) best = sim;
-              if (best >= 0.9) break;
+              if (best >= 0.95) break;
             }
+            if (best >= 0.95) return { text, score: 90 };
             if (best >= 0.8) return { text, score: 50 };
             if (best >= 0.65) return { text, score: 35 };
           }
@@ -320,7 +327,6 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
       return tokens.map((text) => ({ text, score: 0 }));
     }
 
-    const sourceSet = new Set(sourceTokens);
     return tokens.map((text) => {
       const norm = normalizeToken(text);
       if (!norm) {
@@ -883,7 +889,7 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
 
                         {highlightedSentences.length > 0 ? (
                           <>
-                            {!isClean && (
+                            {highlightedSentences.some((s) => s.score > 0) && (
                               <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
                                   <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 4, background: 'rgba(220, 38, 38, 0.6)', border: '2px solid #b91c1c' }}></span>
@@ -906,24 +912,42 @@ export default function Pretrained({ sidebarOpen, setSidebarOpen }) {
                             <div style={{ lineHeight: 2 }}>
                               {highlightedSentences.map((item, idx) => (
                                 <span key={idx} style={{ marginRight: 6 }}>
-                                  {!isClean && item.sourceSentence ? (
-                                    <span title={`Match: ${fmtPct(item.score)}%`}>
+                                  {item.sourceSentence && item.score > 0 ? (
+                                    <span
+                                      title={`Match: ${fmtPct(item.score)}%`}
+                                      style={(() => {
+                                        const colorCap = displayDecision === 'PLAGIARIZED' ? 100 : 60;
+                                        const s = Math.min(clampPct(item.score), colorCap);
+                                        if (s >= 70) return { background: 'rgba(220,38,38,0.09)', borderRadius: 4, padding: '1px 2px' };
+                                        if (s >= 40) return { background: 'rgba(245,158,11,0.09)', borderRadius: 4, padding: '1px 2px' };
+                                        return {};
+                                      })()}
+                                    >
                                       {buildTokenHighlights(
                                         item.text,
                                         item.sourceSentence,
                                         item.alignedWords
-                                      ).map(
-                                        (tok, tIdx) => (
-                                          <span key={tIdx} style={highlightWordStyle(tok.score, displayHasDirectWebCopy)}>
+                                      ).map((tok, tIdx) => {
+                                        const colorCap = displayDecision === 'PLAGIARIZED' ? 100 : 60;
+                                        let wordScore = Math.min(tok.score, colorCap);
+                                        if (item.score >= 40 && item.score < 70 && wordScore >= 70) {
+                                          wordScore = 60;
+                                        }
+                                        const isStrongWord = displayDecision === 'PLAGIARIZED' && displayHasDirectWebCopy && item.score >= 70;
+                                        return (
+                                          <span key={tIdx} style={highlightWordStyle(wordScore, isStrongWord)}>
                                             {tok.text}
                                           </span>
-                                        )
-                                      )}
+                                        );
+                                      })}
                                     </span>
                                   ) : (
                                     <span
-                                      style={highlightStyle(isClean ? 0 : item.score, displayHasDirectWebCopy)}
-                                      title={isClean ? undefined : `Match: ${fmtPct(item.score)}%`}
+                                      style={highlightStyle(
+                                        Math.min(item.score, displayDecision === 'PLAGIARIZED' ? 100 : 60),
+                                        displayDecision === 'PLAGIARIZED' && displayHasDirectWebCopy && item.score >= 70
+                                      )}
+                                      title={item.score > 0 ? `Match: ${fmtPct(item.score)}%` : undefined}
                                     >
                                       {item.text}
                                     </span>

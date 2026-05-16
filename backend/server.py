@@ -88,7 +88,7 @@ class InternetRequest(BaseModel):
 class WSARequest(BaseModel):
     text: str
 
-# --- 1. YOUR ROUTES (Migrated to FastAPI) ---
+# --- 1.  ROUTES (Migrated to FastAPI) ---
 
 @app.post("/api/check-paraphrase")
 async def check_paraphrase_route(data: ParaphraseRequest):

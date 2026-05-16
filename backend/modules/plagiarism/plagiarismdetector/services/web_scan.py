@@ -183,7 +183,30 @@ def _make_direct_match(sentence, score=100.0):
 
 
 def _normalize_token(token: str) -> str:
-    return re.sub(r"^[^\w\u0D80-\u0DFF]+|[^\w\u0D80-\u0DFF]+$", "", token or "").strip().lower()
+    t = re.sub("[\u200B\u200C\u200D\u200E\u200F\uFEFF\xad]", "", token or "")
+    t = unicodedata.normalize("NFC", t)
+    return re.sub(r"^[^\w\u0D80-\u0DFF]+|[^\w\u0D80-\u0DFF]+$", "", t).strip().lower()
+
+
+def _build_page_vocab(page_text: str) -> set:
+    vocab = set()
+    for t in re.findall(r"\S+", page_text or ""):
+        norm = _normalize_token(t)
+        if norm:
+            vocab.add(norm)
+    return vocab
+
+
+def _align_words_page(student_sentence: str, page_vocab: set):
+    tokens = _tokenize_preserve_spaces(student_sentence)
+    aligned = []
+    for idx, token in enumerate(tokens):
+        norm = _normalize_token(token)
+        if not norm:
+            aligned.append({"token_index": idx, "match_type": "none"})
+            continue
+        aligned.append({"token_index": idx, "match_type": "exact" if norm in page_vocab else "none"})
+    return aligned
 
 
 def _tokenize_preserve_spaces(text: str):
@@ -260,6 +283,7 @@ def process_single_url(url, input_sentences):
         web_sentences = split_sentences(web_raw_content)[:max_web_sentences]
         if not web_sentences:
             return None
+        page_vocab = _build_page_vocab(web_raw_content)
 
         detailed_matches = []
         best_scores = []
@@ -374,7 +398,7 @@ def process_single_url(url, input_sentences):
                         "semantic_score": analysis["semantic_score"],
                         "lexical_score": analysis["lexical_score"],
                         "mode": analysis["detection_mode"],
-                        "aligned_words": _align_words(s_sent, w_sent),
+                        "aligned_words": _align_words_page(s_sent, page_vocab),
                     }
 
             best_scores.append(best_match_score)
@@ -425,7 +449,10 @@ def check_internet_plagiarism(student_text):
     per_query_results = WEB_SCAN_RESULTS_LONG if len(input_sentences) > 3 else WEB_SCAN_RESULTS_SHORT
 
     for query in search_queries[:2]:
-        wiki_query = f"site:si.wikipedia.org \"{query}\""
+        # Use unquoted keyword search for Wikipedia so paraphrased text still
+        # finds the original article (exact-phrase search fails for paraphrases).
+        short_query = " ".join(query.split()[:12])
+        wiki_query = f"site:si.wikipedia.org {short_query}"
         wiki_urls = get_internet_resources(wiki_query, num_results=3)
         for url in wiki_urls:
             if _is_wikipedia(url) and url not in seen:
@@ -480,7 +507,7 @@ def check_internet_plagiarism(student_text):
         r
         for r in url_reports
         if _is_wikipedia(r.get("url", ""))
-        and float(r.get("overall_paraphrase_percentage", 0.0)) >= 70.0
+        and float(r.get("overall_paraphrase_percentage", 0.0)) >= 40.0
     ]
     if wiki_strong:
         best_wiki = max(

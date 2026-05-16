@@ -1,5 +1,6 @@
 import asyncio
 import re
+import unicodedata
 from typing import Dict, List, Optional
 
 from ..database.db_config import get_db_connection
@@ -27,21 +28,32 @@ def _split_sentences(text: str) -> List[str]:
 
 
 def _normalize_token_db(token: str) -> str:
-    token = re.sub(r'^[^\w඀-෿]+|[^\w඀-෿]+$', '', token or '')
-    return token.strip().lower()
+    t = re.sub("[​‌‍‎‏﻿­]", "", token or "")
+    t = unicodedata.normalize("NFC", t)
+    return re.sub(r'^[^\w඀-෿]+|[^\w඀-෿]+$', '', t).strip().lower()
 
 
-def _align_words_db(student_sentence: str, source_sentence: str) -> List[Dict]:
+def _build_source_vocab(source_text: str) -> set:
+    vocab = set()
+    for t in (source_text or '').split():
+        norm = _normalize_token_db(t)
+        if norm:
+            vocab.add(norm)
+    return vocab
+
+
+def _align_words_db_page(student_sentence: str, source_vocab: set) -> List[Dict]:
+    """Align student tokens against the full source submission vocabulary so that
+    all words borrowed from the source document are highlighted, not only those
+    that appear in the single best-matching sentence."""
     tokens = (student_sentence or '').split()
-    source_tokens = [_normalize_token_db(t) for t in (source_sentence or '').split()]
-    source_set = {t for t in source_tokens if t}
     aligned = []
     for idx, token in enumerate(tokens):
         norm = _normalize_token_db(token)
         if not norm:
             aligned.append({"token_index": idx, "match_type": "none"})
             continue
-        aligned.append({"token_index": idx, "match_type": "exact" if norm in source_set else "none"})
+        aligned.append({"token_index": idx, "match_type": "exact" if norm in source_vocab else "none"})
     return aligned
 
 
@@ -50,6 +62,7 @@ def _build_detailed_matches(student_text: str, source_text: str, overall_score: 
     source_sents = _split_sentences(source_text)
     if not student_sents or not source_sents:
         return []
+    source_vocab = _build_source_vocab(source_text)
     detailed = []
     for i, s_sent in enumerate(student_sents):
         s_tokens = set(_tokenize(s_sent))
@@ -63,15 +76,34 @@ def _build_detailed_matches(student_text: str, source_text: str, overall_score: 
             if score > best_score:
                 best_score = score
                 best_source = src_sent
-        if best_score >= 25 and best_source:
+        # Use overall_score as a floor so paraphrased sentences (low per-sentence
+        # Jaccard) still get a meaningful score and appear highlighted.
+        sentence_score = round(max(best_score, overall_score * 0.65), 2)
+        if sentence_score >= 10 and best_source:
             detailed.append({
                 "sentenceIndex": i,
                 "student_sentence": s_sent,
                 "source_sentence": best_source,
-                "paraphrase_score": round(max(best_score, overall_score * 0.7), 2),
-                "score": round(max(best_score, overall_score * 0.7), 2),
-                "aligned_words": _align_words_db(s_sent, best_source),
+                "paraphrase_score": sentence_score,
+                "score": sentence_score,
+                "aligned_words": _align_words_db_page(s_sent, source_vocab),
             })
+
+    # Fallback: if no sentence met the threshold but the overall DB score is high,
+    # generate a match for every sentence so highlighting always shows.
+    if not detailed and overall_score >= 40:
+        first_source = source_sents[0]
+        fallback_score = round(overall_score * 0.65, 2)
+        for i, s_sent in enumerate(student_sents):
+            detailed.append({
+                "sentenceIndex": i,
+                "student_sentence": s_sent,
+                "source_sentence": first_source,
+                "paraphrase_score": fallback_score,
+                "score": fallback_score,
+                "aligned_words": _align_words_db_page(s_sent, source_vocab),
+            })
+
     return detailed
 
 
